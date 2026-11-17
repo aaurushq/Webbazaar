@@ -6,7 +6,6 @@ const REPO = "Webbazaar";
 const TOKEN = process.argv[2] || process.env.GITHUB_TOKEN;
 
 if (!TOKEN) {
-  console.error("Error: Please provide your GitHub Personal Access Token as an argument or via GITHUB_TOKEN environment variable.");
   console.error("Usage: node scripts/deploy-to-github.mjs <ghp_token>");
   process.exit(1);
 }
@@ -69,35 +68,19 @@ function getAllFiles(dirPath, rootDir = dirPath) {
 }
 
 async function deploy() {
-  console.log(`=== DEPLOYING WEBBAZAAR TO GITHUB REPO: ${OWNER}/${REPO} ===`);
+  console.log(`=== SYNCING LATEST WEBBAZAAR UPDATES TO GITHUB: ${OWNER}/${REPO} ===`);
 
-  // 1. Verify token scopes
-  const userRes = await githubRequest("/user");
-  console.log(`Authenticated as GitHub user: @${userRes.login}`);
+  // 1. Get latest commit SHA on main
+  const refData = await githubRequest(`/repos/${OWNER}/${REPO}/git/ref/heads/main`);
+  const latestCommitSha = refData.object.sha;
+  console.log(`Current main commit: ${latestCommitSha}`);
 
-  // 2. Ensure repository exists and initialize if empty
-  console.log("Checking repository status...");
-  let latestCommitSha = null;
-  try {
-    const refData = await githubRequest(`/repos/${OWNER}/${REPO}/git/ref/heads/main`);
-    latestCommitSha = refData.object.sha;
-    console.log(`Repository already has main branch: ${latestCommitSha}`);
-  } catch (e) {
-    console.log("Repository is empty. Initializing with root README.md...");
-    const initRes = await githubRequest(`/repos/${OWNER}/${REPO}/contents/README.md`, "PUT", {
-      message: "Initial commit: Initialize WebBazaar repository",
-      content: Buffer.from("# WebBazaar\n\nIndia-First Marketplace for Digital Assets\n").toString("base64"),
-    });
-    latestCommitSha = initRes.commit.sha;
-    console.log(`Repository initialized. Base commit: ${latestCommitSha}`);
-  }
-
-  // 3. Collect project files
+  // 2. Collect project files
   const files = getAllFiles(process.cwd());
-  console.log(`\nFound ${files.length} project files to deploy.`);
+  console.log(`Found ${files.length} project files.`);
 
-  // 4. Upload blobs in parallel batches
-  console.log("\nUploading file blobs to GitHub...");
+  // 3. Upload blobs in parallel batches
+  console.log("Uploading file blobs to GitHub...");
   const treeItems = [];
   const BATCH_SIZE = 10;
 
@@ -122,38 +105,36 @@ async function deploy() {
     treeItems.push(...batchResults);
     process.stdout.write(`  Uploaded ${treeItems.length}/${files.length} files...\r`);
   }
-  console.log(`\n  All ${treeItems.length} file blobs uploaded successfully.`);
+  console.log(`\nAll ${treeItems.length} file blobs uploaded.`);
 
-  // 5. Create Git Tree
-  console.log("\nCreating Git Tree...");
+  // 4. Create Git Tree based on latest commit
+  console.log("Creating Git Tree...");
   const tree = await githubRequest(`/repos/${OWNER}/${REPO}/git/trees`, "POST", {
     base_tree: latestCommitSha,
     tree: treeItems,
   });
-  console.log(`  Git Tree created: ${tree.sha}`);
+  console.log(`Git Tree created: ${tree.sha}`);
 
-  // 6. Create Git Commit
-  console.log("\nCreating deployment commit...");
+  // 5. Create Commit
+  console.log("Creating commit...");
   const commit = await githubRequest(`/repos/${OWNER}/${REPO}/git/commits`, "POST", {
-    message: "WebBazaar: Complete Marketplace, Authentication, and Security Architecture (Phase 1 & 2)",
+    message: "feat: Add Resend transactional email utility and configure webbazaar.onrender.com domain",
     tree: tree.sha,
     parents: [latestCommitSha],
   });
-  console.log(`  Commit created: ${commit.sha}`);
+  console.log(`Commit created: ${commit.sha}`);
 
-  // 7. Update branch reference to new commit
-  console.log("\nUpdating main branch reference...");
+  // 6. Update main ref
+  console.log("Updating main branch reference...");
   await githubRequest(`/repos/${OWNER}/${REPO}/git/refs/heads/main`, "PATCH", {
     sha: commit.sha,
     force: true,
   });
 
-  console.log("\n================================================================================");
-  console.log(`SUCCESS! Project successfully deployed to: https://github.com/${OWNER}/${REPO}`);
-  console.log("================================================================================");
+  console.log("SUCCESS! Updates deployed to GitHub.");
 }
 
 deploy().catch((err) => {
-  console.error("\nDeployment Failed:", err.message);
+  console.error("Deploy failed:", err.message);
   process.exit(1);
 });

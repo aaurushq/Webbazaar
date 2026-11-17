@@ -19,6 +19,19 @@ import {
 } from "./schemas";
 
 /**
+ * Resolves the public application URL dynamically
+ */
+function getAppUrl(): string {
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
+  }
+  if (process.env.RENDER_EXTERNAL_URL) {
+    return process.env.RENDER_EXTERNAL_URL.replace(/\/$/, "");
+  }
+  return "https://webbazaar.onrender.com";
+}
+
+/**
  * Sanitizes redirect destination to prevent open redirects
  */
 export async function sanitizeRedirect(url?: string | null): Promise<string> {
@@ -69,7 +82,7 @@ export async function signUpAction(input: RegisterInput) {
     return { error: parsed.error.issues[0]?.message || "Invalid registration format" };
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const appUrl = getAppUrl();
   const supabase = createClient();
 
   const { data, error } = await supabase.auth.signUp({
@@ -122,7 +135,7 @@ export async function resendVerificationEmailAction(email: string) {
     return { error: "Please provide a valid email address to resend confirmation." };
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const appUrl = getAppUrl();
   const supabase = createClient();
 
   const { error } = await supabase.auth.resend({
@@ -166,7 +179,7 @@ export async function forgotPasswordAction(input: ForgotPasswordInput) {
     return { error: parsed.error.issues[0]?.message || "Invalid email format" };
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const appUrl = getAppUrl();
   const supabase = createClient();
 
   const { error } = await supabase.auth.resetPasswordForEmail(parsed.data.email, {

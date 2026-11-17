@@ -112,25 +112,29 @@ export function Header() {
   const isSeller = userRoles.includes("VERIFIED_SELLER");
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-slate-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
+    <header className="sticky top-0 z-40 w-full border-b border-slate-200/80 glass-header shadow-xs transition-colors">
       <div className="container mx-auto flex h-16 items-center justify-between gap-4 px-4 sm:px-6">
-        {/* Brand Logo */}
-        <Link href="/" className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary-600 text-white font-bold text-lg shadow-sm">
+        {/* Brand Logo with Ambient Glow */}
+        <Link href="/" className="flex items-center gap-2.5 group">
+          <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-600 via-primary-600 to-teal-500 text-white font-extrabold text-lg shadow-md shadow-indigo-500/20 group-hover:scale-105 transition-transform">
             W
+            <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-teal-500"></span>
+            </span>
           </div>
           <div className="flex flex-col">
-            <span className="font-bold text-xl tracking-tight text-slate-900 leading-none">
-              Web<span className="text-primary-600">Bazaar</span>
+            <span className="font-extrabold text-xl tracking-tight text-slate-900 leading-none group-hover:text-primary-600 transition-colors">
+              Web<span className="text-primary-600 bg-clip-text text-transparent bg-gradient-to-r from-primary-600 to-teal-600">Bazaar</span>
             </span>
-            <span className="text-[10px] text-slate-500 font-medium tracking-wider uppercase mt-0.5">
-              India Marketplace
+            <span className="text-[10px] text-slate-400 font-semibold tracking-wider uppercase mt-0.5">
+              Digital Marketplace
             </span>
           </div>
         </Link>
 
         {/* Desktop Navigation Links */}
-        <nav className="hidden lg:flex items-center gap-1 xl:gap-2 text-sm font-medium">
+        <nav className="hidden lg:flex items-center gap-1 xl:gap-1.5 text-xs font-semibold">
           {NAV_LINKS.map((link) => {
             const isActive = pathname === link.href;
             return (
@@ -138,10 +142,10 @@ export function Header() {
                 key={link.href}
                 href={link.href}
                 className={cn(
-                  "px-3 py-1.5 rounded-md transition-colors",
+                  "px-3 py-1.5 rounded-lg transition-all",
                   isActive
-                    ? "bg-slate-100 text-primary-600 font-semibold"
-                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                    ? "bg-primary-50 text-primary-700 font-bold shadow-xs"
+                    : "text-slate-600 hover:text-slate-950 hover:bg-slate-100/70"
                 )}
               >
                 {link.label}
@@ -153,14 +157,17 @@ export function Header() {
         {/* Quick Search */}
         <div className="hidden md:flex items-center gap-3 flex-1 max-w-xs lg:max-w-sm justify-end">
           <form onSubmit={handleSearchSubmit} className="relative w-full">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
             <input
               type="text"
               placeholder="Search websites, code, SaaS..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-9 pl-9 pr-3 text-xs rounded-lg border border-slate-200 bg-slate-50 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-transparent transition-all"
+              className="w-full h-8 pl-8 pr-12 text-xs rounded-lg border border-slate-200/90 bg-slate-50/80 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 transition-all"
             />
+            <kbd className="absolute right-2.5 top-1/2 -translate-y-1/2 px-1.5 py-0.5 text-[9px] font-mono text-slate-400 bg-white border border-slate-200 rounded">
+              ⌘K
+            </kbd>
           </form>
         </div>
 
@@ -170,9 +177,9 @@ export function Header() {
             <div className="flex items-center gap-2">
               <Link
                 href="/dashboard/buyer"
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 transition-colors text-xs font-semibold text-slate-800"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300 transition-all text-xs font-semibold text-slate-800 shadow-xs"
               >
-                <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary-600 text-[10px] font-bold text-white">
+                <div className="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-tr from-indigo-600 to-primary-600 text-[10px] font-bold text-white shadow-xs">
                   {displayName?.charAt(0).toUpperCase() || "U"}
                 </div>
                 <span className="max-w-[100px] truncate">{displayName}</span>
@@ -182,14 +189,14 @@ export function Header() {
                 <>
                   <Link
                     href="/dashboard/seller"
-                    className="px-2.5 py-1 text-xs font-medium text-slate-600 hover:text-slate-900 rounded hover:bg-slate-100 transition-colors"
+                    className="px-2.5 py-1 text-xs font-medium text-slate-600 hover:text-slate-900 rounded-md hover:bg-slate-100 transition-colors"
                     title="Seller Dashboard"
                   >
                     Seller
                   </Link>
                   <Link
                     href="/dashboard/seller/listings"
-                    className="px-2 py-1 text-xs font-medium text-primary-700 bg-primary-50 hover:bg-primary-100 rounded transition-colors"
+                    className="px-2.5 py-1 text-xs font-semibold text-primary-700 bg-primary-50 hover:bg-primary-100 rounded-md transition-colors"
                     title="Manage Listings"
                   >
                     Listings
@@ -200,7 +207,7 @@ export function Header() {
               {isAdmin && (
                 <Link
                   href="/dashboard/admin"
-                  className="px-2.5 py-1 text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 rounded border border-amber-200 transition-colors"
+                  className="px-2.5 py-1 text-xs font-semibold text-amber-800 bg-amber-50 hover:bg-amber-100 rounded-md border border-amber-200/70 transition-colors"
                   title="Admin Console"
                 >
                   Admin
@@ -222,14 +229,18 @@ export function Header() {
             </div>
           ) : (
             <>
-              <Button asChild size="sm" variant="ghost" className="gap-1.5 text-xs font-semibold">
+              <Button asChild size="sm" variant="ghost" className="gap-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900">
                 <Link href="/login">
                   <User className="h-3.5 w-3.5 text-slate-500" />
                   <span>Log In</span>
                 </Link>
               </Button>
 
-              <Button asChild size="sm" variant="default" className="gap-1.5">
+              <Button
+                asChild
+                size="sm"
+                className="gap-1.5 text-xs bg-gradient-to-r from-primary-600 to-indigo-600 hover:from-primary-700 hover:to-indigo-700 text-white font-semibold shadow-md shadow-primary-500/20 hover:shadow-lg hover:shadow-primary-500/30 transition-all"
+              >
                 <Link href="/become-a-seller">
                   <span>Become a Seller</span>
                   <ArrowRight className="h-3.5 w-3.5" />

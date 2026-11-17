@@ -4,7 +4,7 @@ import { CheckCircle2, ArrowUpRight, TrendingUp, Sparkles, Clock } from "lucide-
 import { Listing } from "@/types/marketplace";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { formatINR, getListingTypeBadgeClass, getListingTypeLabel } from "@/lib/utils";
+import { formatINR, getListingTypeBadgeClass, getListingTypeLabel, cn } from "@/lib/utils";
 
 interface ListingCardProps {
   listing: Listing;
@@ -16,7 +16,7 @@ export function ListingCard({ listing, priority = false }: ListingCardProps) {
   const isService = listing.listingType === "SERVICE";
 
   return (
-    <div className="group relative flex flex-col rounded-xl border border-slate-200 bg-white shadow-sm hover:shadow-md hover:border-slate-300 transition-all overflow-hidden">
+    <div className="group relative flex flex-col rounded-2xl border border-slate-200/90 bg-white shadow-xs hover:shadow-xl hover:shadow-indigo-500/10 hover:border-primary-400 hover:-translate-y-1 transition-all duration-300 overflow-hidden">
       {/* Top Media Container */}
       <div className="relative aspect-[16/10] w-full overflow-hidden bg-slate-100">
         <Image
@@ -25,24 +25,27 @@ export function ListingCard({ listing, priority = false }: ListingCardProps) {
           fill
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
           priority={priority}
-          className="object-cover transition-transform duration-300 group-hover:scale-105"
+          className="object-cover transition-transform duration-500 group-hover:scale-108"
         />
 
+        {/* Ambient Dark Gradient on bottom of image for readability */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60 group-hover:opacity-40 transition-opacity" />
+
         {/* Badges Overlay */}
-        <div className="absolute top-2.5 left-2.5 flex flex-wrap gap-1.5 items-center">
-          <Badge className={getListingTypeBadgeClass(listing.listingType)}>
+        <div className="absolute top-3 left-3 flex flex-wrap gap-1.5 items-center">
+          <Badge className={cn("shadow-sm backdrop-blur-md", getListingTypeBadgeClass(listing.listingType))}>
             {getListingTypeLabel(listing.listingType)}
           </Badge>
 
           {listing.isFeatured && (
-            <Badge variant="demo" className="bg-amber-100 text-amber-900 border-amber-300">
+            <Badge variant="demo" className="bg-amber-100/95 text-amber-900 border-amber-300 shadow-xs">
               <Sparkles className="h-3 w-3 mr-1" />
               Featured
             </Badge>
           )}
 
           {listing.isTrending && (
-            <Badge variant="demo" className="bg-rose-100 text-rose-800 border-rose-300">
+            <Badge variant="demo" className="bg-rose-100/95 text-rose-800 border-rose-300 shadow-xs">
               <TrendingUp className="h-3 w-3 mr-1" />
               Trending
             </Badge>
@@ -51,12 +54,12 @@ export function ListingCard({ listing, priority = false }: ListingCardProps) {
 
         {/* DEMO vs VERIFIED Indicator Tag */}
         {listing.isDemo !== false ? (
-          <div className="absolute bottom-2 right-2 bg-amber-900/80 backdrop-blur-sm text-amber-200 text-[10px] font-mono px-2 py-0.5 rounded border border-amber-500/30">
+          <div className="absolute bottom-2.5 right-2.5 bg-amber-950/85 backdrop-blur-md text-amber-200 text-[10px] font-mono px-2 py-0.5 rounded border border-amber-500/30 shadow-xs">
             DEMO LISTING
           </div>
         ) : (
-          <div className="absolute bottom-2 right-2 bg-emerald-950/85 backdrop-blur-sm text-emerald-300 text-[10px] font-semibold px-2 py-0.5 rounded border border-emerald-500/40 flex items-center gap-1">
-            <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+          <div className="absolute bottom-2.5 right-2.5 bg-emerald-600/90 backdrop-blur-md text-white text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-400/50 flex items-center gap-1 shadow-md shadow-emerald-600/20">
+            <CheckCircle2 className="h-3 w-3 text-white" />
             VERIFIED LISTING
           </div>
         )}

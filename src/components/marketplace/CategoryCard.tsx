@@ -34,27 +34,27 @@ export function CategoryCard({
   const getBorderHover = () => {
     switch (accentColor) {
       case "indigo":
-        return "hover:border-indigo-300 hover:ring-2 hover:ring-indigo-100";
+        return "hover:border-indigo-400 hover:shadow-indigo-100/50 hover:shadow-xl";
       case "emerald":
-        return "hover:border-emerald-300 hover:ring-2 hover:ring-emerald-100";
+        return "hover:border-emerald-400 hover:shadow-emerald-100/50 hover:shadow-xl";
       case "amber":
-        return "hover:border-amber-300 hover:ring-2 hover:ring-amber-100";
+        return "hover:border-amber-400 hover:shadow-amber-100/50 hover:shadow-xl";
       case "sky":
-        return "hover:border-sky-300 hover:ring-2 hover:ring-sky-100";
+        return "hover:border-sky-400 hover:shadow-sky-100/50 hover:shadow-xl";
     }
   };
 
   return (
     <Link
       href={href}
-      className={`group relative flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-200 ${getBorderHover()}`}
+      className={`group relative flex flex-col justify-between rounded-2xl border border-slate-200/90 bg-white/95 p-6 shadow-sm hover:-translate-y-1 transition-all duration-300 ${getBorderHover()}`}
     >
       <div>
         <div className="flex items-center justify-between mb-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-50 border border-slate-100 group-hover:bg-white group-hover:shadow-sm transition-all">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-50 border border-slate-100 group-hover:bg-white group-hover:scale-110 group-hover:shadow-md transition-all duration-300">
             {getIcon()}
           </div>
-          <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700">
+          <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-slate-100/80 text-slate-700 border border-slate-200/60">
             {countLabel}
           </span>
         </div>

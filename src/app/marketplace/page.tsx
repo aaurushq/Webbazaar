@@ -96,14 +96,25 @@ function MarketplaceCatalogContent() {
 
   return (
     <div className="container mx-auto px-4 sm:px-6 py-8 sm:py-12">
-      {/* Page Header */}
-      <div className="mb-8 space-y-2">
-        <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
-          Marketplace Catalog
-        </h1>
-        <p className="text-sm text-slate-600 max-w-2xl">
-          Browse verified ready-made websites, premium templates, online businesses, and customization services. All items formatted in INR.
-        </p>
+      {/* Page Header with Ambient Accent */}
+      <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4 pb-6 border-b border-slate-200">
+        <div className="space-y-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-200/80 text-primary-700 text-xs font-semibold">
+            <span>Verified Marketplace</span>
+            <span className="text-slate-300">•</span>
+            <span>Real INR Pricing</span>
+          </div>
+          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900">
+            Digital Asset Catalog
+          </h1>
+          <p className="text-sm text-slate-600 max-w-2xl">
+            Explore ready-made websites, full-stack boilerplates, cash-flowing online businesses, and developer services with escrow-backed code transfer.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 text-xs font-medium text-slate-500 bg-slate-100/80 px-3.5 py-2 rounded-xl border border-slate-200 shrink-0">
+          <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span>{filteredListings.length} Assets Available</span>
+        </div>
       </div>
 
       {/* Filter Bar */}

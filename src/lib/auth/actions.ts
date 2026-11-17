@@ -104,7 +104,16 @@ export async function signUpAction(input: RegisterInput) {
     ) {
       return {
         error:
-          "Email send limit reached for this hour on Supabase free tier (3 emails/hour). If you have already registered, check your spam/inbox or wait for the cooldown.",
+          "Email send limit reached for this hour. Please wait a few minutes before trying again.",
+      };
+    }
+    if (
+      error.message.toLowerCase().includes("error sending confirmation email") ||
+      (error as any).status === 500
+    ) {
+      return {
+        error:
+          "Unable to dispatch confirmation email. In Resend sandbox mode, emails can only be sent to the verified account owner (chetan500prajapat@gmail.com). To allow all users to register, verify a custom domain in Resend (resend.com/domains).",
       };
     }
     if (error.message.includes("User already registered")) {
@@ -193,7 +202,16 @@ export async function forgotPasswordAction(input: ForgotPasswordInput) {
       (error as any).status === 429
     ) {
       return {
-        error: "Password reset email rate limit exceeded. Please try again after a few minutes.",
+        error: "Password reset email rate limit reached. Please wait a few minutes before trying again.",
+      };
+    }
+    if (
+      error.message.toLowerCase().includes("error sending recovery email") ||
+      (error as any).status === 500
+    ) {
+      return {
+        error:
+          "Unable to send recovery email. In Resend sandbox mode, emails can only be sent to the verified account owner (chetan500prajapat@gmail.com). To enable password recovery for all email addresses, verify a custom domain in Resend (resend.com/domains).",
       };
     }
     return { error: error.message };

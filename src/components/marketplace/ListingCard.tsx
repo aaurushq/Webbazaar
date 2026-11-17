@@ -49,10 +49,17 @@ export function ListingCard({ listing, priority = false }: ListingCardProps) {
           )}
         </div>
 
-        {/* DEMO Indicator Tag */}
-        <div className="absolute bottom-2 right-2 bg-slate-900/80 backdrop-blur-sm text-slate-200 text-[10px] font-mono px-2 py-0.5 rounded">
-          DEMO LISTING
-        </div>
+        {/* DEMO vs VERIFIED Indicator Tag */}
+        {listing.isDemo !== false ? (
+          <div className="absolute bottom-2 right-2 bg-amber-900/80 backdrop-blur-sm text-amber-200 text-[10px] font-mono px-2 py-0.5 rounded border border-amber-500/30">
+            DEMO LISTING
+          </div>
+        ) : (
+          <div className="absolute bottom-2 right-2 bg-emerald-950/85 backdrop-blur-sm text-emerald-300 text-[10px] font-semibold px-2 py-0.5 rounded border border-emerald-500/40 flex items-center gap-1">
+            <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+            VERIFIED LISTING
+          </div>
+        )}
       </div>
 
       {/* Content Container */}

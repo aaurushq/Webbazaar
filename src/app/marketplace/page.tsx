@@ -2,15 +2,24 @@
 
 import * as React from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { ListingFilterState, ListingType, Category, SortOption } from "@/types/marketplace";
+import { ListingFilterState, ListingType, Category, SortOption, Listing } from "@/types/marketplace";
 import { DEMO_LISTINGS } from "@/data/demo-listings";
 import { filterAndSortListings } from "@/lib/utils";
 import { ListingFilters } from "@/components/marketplace/ListingFilters";
 import { ListingGrid } from "@/components/marketplace/ListingGrid";
+import { getUnifiedMarketplaceListings } from "@/lib/listings/public";
 
 function MarketplaceCatalogContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const [allListings, setAllListings] = React.useState<Listing[]>(DEMO_LISTINGS.map(item => ({ ...item, isDemo: true })));
+  const [loading, setLoading] = React.useState(false);
+
+  React.useEffect(() => {
+    getUnifiedMarketplaceListings().then((items) => {
+      setAllListings(items);
+    });
+  }, []);
 
   // Read initial filter values from URL search params
   const initialQuery = searchParams.get("q") || "";
@@ -82,8 +91,8 @@ function MarketplaceCatalogContent() {
 
   // Filter listings
   const filteredListings = React.useMemo(() => {
-    return filterAndSortListings(DEMO_LISTINGS, filters);
-  }, [filters]);
+    return filterAndSortListings(allListings, filters);
+  }, [allListings, filters]);
 
   return (
     <div className="container mx-auto px-4 sm:px-6 py-8 sm:py-12">

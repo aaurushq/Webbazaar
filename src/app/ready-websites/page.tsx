@@ -6,13 +6,20 @@ import { Globe, ShieldCheck, Zap, Sparkles } from "lucide-react";
 import { DEMO_LISTINGS } from "@/data/demo-listings";
 import { ListingGrid } from "@/components/marketplace/ListingGrid";
 import { ListingCard } from "@/components/marketplace/ListingCard";
-import { ListingFilterState } from "@/types/marketplace";
+import { ListingFilterState, Listing } from "@/types/marketplace";
 import { filterAndSortListings } from "@/lib/utils";
 import { ListingFilters } from "@/components/marketplace/ListingFilters";
+import { getUnifiedMarketplaceListings } from "@/lib/listings/public";
 
 export default function ReadyWebsitesPage() {
-  const readyWebsites = React.useMemo(() => {
-    return DEMO_LISTINGS.filter((item) => item.listingType === "READY_WEBSITE");
+  const [readyWebsites, setReadyWebsites] = React.useState<Listing[]>(
+    DEMO_LISTINGS.filter((item) => item.listingType === "READY_WEBSITE").map(item => ({ ...item, isDemo: true }))
+  );
+
+  React.useEffect(() => {
+    getUnifiedMarketplaceListings({ listingType: "READY_WEBSITE" }).then((items) => {
+      setReadyWebsites(items.filter((item) => item.listingType === "READY_WEBSITE"));
+    });
   }, []);
 
   const [filters, setFilters] = React.useState<ListingFilterState>({

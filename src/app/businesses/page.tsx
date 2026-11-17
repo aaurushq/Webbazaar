@@ -5,13 +5,20 @@ import Link from "next/link";
 import { Briefcase, AlertTriangle, ShieldCheck, FileText, CheckCircle2 } from "lucide-react";
 import { DEMO_LISTINGS } from "@/data/demo-listings";
 import { ListingGrid } from "@/components/marketplace/ListingGrid";
-import { ListingFilterState } from "@/types/marketplace";
+import { ListingFilterState, Listing } from "@/types/marketplace";
 import { filterAndSortListings } from "@/lib/utils";
 import { ListingFilters } from "@/components/marketplace/ListingFilters";
+import { getUnifiedMarketplaceListings } from "@/lib/listings/public";
 
 export default function BusinessesPage() {
-  const businesses = React.useMemo(() => {
-    return DEMO_LISTINGS.filter((item) => item.listingType === "BUSINESS");
+  const [businesses, setBusinesses] = React.useState<Listing[]>(
+    DEMO_LISTINGS.filter((item) => item.listingType === "BUSINESS").map(item => ({ ...item, isDemo: true }))
+  );
+
+  React.useEffect(() => {
+    getUnifiedMarketplaceListings({ listingType: "BUSINESS" }).then((items) => {
+      setBusinesses(items.filter((item) => item.listingType === "BUSINESS"));
+    });
   }, []);
 
   const [filters, setFilters] = React.useState<ListingFilterState>({

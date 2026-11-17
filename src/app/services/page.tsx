@@ -5,13 +5,20 @@ import Link from "next/link";
 import { Wrench, Clock, RefreshCw, ShieldCheck, CheckCircle } from "lucide-react";
 import { DEMO_LISTINGS } from "@/data/demo-listings";
 import { ListingGrid } from "@/components/marketplace/ListingGrid";
-import { ListingFilterState } from "@/types/marketplace";
+import { ListingFilterState, Listing } from "@/types/marketplace";
 import { filterAndSortListings } from "@/lib/utils";
 import { ListingFilters } from "@/components/marketplace/ListingFilters";
+import { getUnifiedMarketplaceListings } from "@/lib/listings/public";
 
 export default function ServicesPage() {
-  const services = React.useMemo(() => {
-    return DEMO_LISTINGS.filter((item) => item.listingType === "SERVICE");
+  const [services, setServices] = React.useState<Listing[]>(
+    DEMO_LISTINGS.filter((item) => item.listingType === "SERVICE").map(item => ({ ...item, isDemo: true }))
+  );
+
+  React.useEffect(() => {
+    getUnifiedMarketplaceListings({ listingType: "SERVICE" }).then((items) => {
+      setServices(items.filter((item) => item.listingType === "SERVICE"));
+    });
   }, []);
 
   const [filters, setFilters] = React.useState<ListingFilterState>({

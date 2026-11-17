@@ -77,6 +77,7 @@ export interface Listing {
   originalPriceINR?: number;
   isFeatured?: boolean;
   isTrending?: boolean;
+  isDemo?: boolean;
   tags: string[];
   techStack: string[];
   previewImageUrl: string;

@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/dialog";
 import { ListingCard } from "@/components/marketplace/ListingCard";
 import { formatINR, getListingTypeBadgeClass, getListingTypeLabel } from "@/lib/utils";
+import { getUnifiedListingBySlug } from "@/lib/listings/public";
 
 interface ListingDetailPageProps {
   params: {
@@ -43,16 +44,35 @@ interface ListingDetailPageProps {
 }
 
 export default function ListingDetailPage({ params }: ListingDetailPageProps) {
-  const listing = DEMO_LISTINGS.find((item) => item.slug === params.slug);
+  const demoFallback = DEMO_LISTINGS.find((item) => item.slug === params.slug);
+  const [listing, setListing] = React.useState<Listing | null>(demoFallback || null);
+  const [loading, setLoading] = React.useState(!demoFallback);
 
-  if (!listing) {
-    notFound();
-  }
+  React.useEffect(() => {
+    getUnifiedListingBySlug(params.slug).then((res) => {
+      if (res) {
+        setListing(res);
+      }
+      setLoading(false);
+    });
+  }, [params.slug]);
 
   const [activeImageIndex, setActiveImageIndex] = React.useState(0);
   const [modalAction, setModalAction] = React.useState<
     "BUY_INSTANT" | "CONTACT_SELLER" | "REQUEST_NDA" | "LIVE_DEMO" | null
   >(null);
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-20 text-center text-xs text-slate-500">
+        Loading listing details...
+      </div>
+    );
+  }
+
+  if (!listing) {
+    notFound();
+  }
 
   const allImages = [listing.previewImageUrl, ...(listing.galleryImages || [])];
   const isBusiness = listing.listingType === "BUSINESS";
@@ -104,9 +124,15 @@ export default function ListingDetailPage({ params }: ListingDetailPageProps) {
                 <Badge className={getListingTypeBadgeClass(listing.listingType)}>
                   {getListingTypeLabel(listing.listingType)}
                 </Badge>
-                <Badge variant="demo" className="bg-slate-900/80 text-white border-0">
-                  DEMO DATA
-                </Badge>
+                {listing.isDemo !== false ? (
+                  <Badge variant="demo" className="bg-amber-900/80 text-amber-200 border-0">
+                    DEMO DATA
+                  </Badge>
+                ) : (
+                  <Badge variant="success" className="bg-emerald-700 text-white border-0 gap-1 font-semibold">
+                    <CheckCircle2 className="h-3 w-3" /> VERIFIED MERCHANT
+                  </Badge>
+                )}
               </div>
             </div>
 

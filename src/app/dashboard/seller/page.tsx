@@ -17,11 +17,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/client";
+import { getSellerDashboardStatsAction, getSellerListingsAction } from "@/lib/listings/actions";
 
 export default function SellerDashboardPage() {
   const [loading, setLoading] = React.useState(true);
   const [sellerProfile, setSellerProfile] = React.useState<any>(null);
   const [application, setApplication] = React.useState<any>(null);
+  const [stats, setStats] = React.useState({ total: 0, draft: 0, pending: 0, approved: 0, rejected: 0, archived: 0 });
+  const [recentListings, setRecentListings] = React.useState<any[]>([]);
 
   React.useEffect(() => {
     const supabase = createClient();
@@ -42,6 +45,12 @@ export default function SellerDashboardPage() {
 
           if (profile) {
             setSellerProfile(profile);
+            const [statsRes, listingsRes] = await Promise.all([
+              getSellerDashboardStatsAction(),
+              getSellerListingsAction(),
+            ]);
+            if (statsRes.stats) setStats(statsRes.stats);
+            if (listingsRes.listings) setRecentListings(listingsRes.listings.slice(0, 5));
           } else {
             // Check seller application status
             const { data: app } = await (supabase as any)
@@ -99,8 +108,14 @@ export default function SellerDashboardPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button asChild size="sm" className="gap-1.5">
-              <Link href="/sell">
+            <Button asChild variant="outline" size="sm" className="gap-1.5 text-xs">
+              <Link href="/dashboard/seller/listings">
+                <Package className="h-4 w-4" />
+                <span>Manage Listings</span>
+              </Link>
+            </Button>
+            <Button asChild size="sm" className="gap-1.5 text-xs bg-primary-600 hover:bg-primary-700 text-white">
+              <Link href="/dashboard/seller/listings/new">
                 <PlusCircle className="h-4 w-4" />
                 <span>Create New Listing</span>
               </Link>
@@ -108,28 +123,85 @@ export default function SellerDashboardPage() {
           </div>
         </div>
 
-        {/* Real Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Real Database Stats */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
           <div className="rounded-xl border border-slate-200 bg-white p-5">
-            <span className="text-xs font-medium text-slate-500 uppercase">Active Listings</span>
-            <p className="text-2xl font-extrabold text-slate-900 mt-1">0</p>
-            <span className="text-[11px] text-slate-400">Phase 3: Listing Creator</span>
+            <span className="text-xs font-medium text-slate-500 uppercase">Total Inventory</span>
+            <p className="text-2xl font-extrabold text-slate-900 mt-1">{stats.total}</p>
+            <span className="text-[11px] text-slate-400">All registered listings</span>
+          </div>
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-5">
+            <span className="text-xs font-medium text-emerald-700 uppercase">Live & Approved</span>
+            <p className="text-2xl font-extrabold text-emerald-900 mt-1">{stats.approved}</p>
+            <span className="text-[11px] text-emerald-600">Active on marketplace</span>
+          </div>
+          <div className="rounded-xl border border-amber-200 bg-amber-50/40 p-5">
+            <span className="text-xs font-medium text-amber-700 uppercase">Pending Review</span>
+            <p className="text-2xl font-extrabold text-amber-900 mt-1">{stats.pending}</p>
+            <span className="text-[11px] text-amber-600">Under admin review</span>
           </div>
           <div className="rounded-xl border border-slate-200 bg-white p-5">
-            <span className="text-xs font-medium text-slate-500 uppercase">Gross Revenue (INR)</span>
-            <p className="text-2xl font-extrabold text-slate-900 mt-1">₹0</p>
-            <span className="text-[11px] text-slate-400">Phase 3: Escrow Payouts</span>
+            <span className="text-xs font-medium text-slate-500 uppercase">Drafts</span>
+            <p className="text-2xl font-extrabold text-slate-900 mt-1">{stats.draft}</p>
+            <span className="text-[11px] text-slate-400">Unpublished drafts</span>
           </div>
-          <div className="rounded-xl border border-slate-200 bg-white p-5">
-            <span className="text-xs font-medium text-slate-500 uppercase">Pending Inquiries</span>
-            <p className="text-2xl font-extrabold text-slate-900 mt-1">0</p>
-            <span className="text-[11px] text-slate-400">Phase 4: Direct Messaging</span>
+          <div className="rounded-xl border border-red-200 bg-red-50/40 p-5">
+            <span className="text-xs font-medium text-red-700 uppercase">Action Needed</span>
+            <p className="text-2xl font-extrabold text-red-900 mt-1">{stats.rejected}</p>
+            <span className="text-[11px] text-red-600">Requires seller revisions</span>
           </div>
-          <div className="rounded-xl border border-slate-200 bg-white p-5">
-            <span className="text-xs font-medium text-slate-500 uppercase">Store Rating</span>
-            <p className="text-2xl font-extrabold text-slate-900 mt-1">New</p>
-            <span className="text-[11px] text-slate-400">No transactions recorded yet</span>
+        </div>
+
+        {/* Recent Listings Summary */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold text-slate-900 text-sm">Recent Listings</h3>
+            <Link href="/dashboard/seller/listings" className="text-xs font-semibold text-primary-600 hover:text-primary-700 flex items-center gap-1">
+              View all ({stats.total}) <ArrowRight className="h-3 w-3" />
+            </Link>
           </div>
+
+          {recentListings.length === 0 ? (
+            <div className="text-center py-8 text-xs text-slate-500 space-y-2">
+              <Package className="h-6 w-6 text-slate-400 mx-auto" />
+              <p>No listings created yet.</p>
+              <Button asChild size="sm" variant="outline" className="text-xs">
+                <Link href="/dashboard/seller/listings/new">Create First Listing</Link>
+              </Button>
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100 text-xs">
+              {recentListings.map((item) => (
+                <div key={item.id} className="py-3 flex items-center justify-between gap-4">
+                  <div className="space-y-0.5">
+                    <p className="font-semibold text-slate-900">{item.title}</p>
+                    <p className="text-[11px] text-slate-500">
+                      {item.listing_type.replace("_", " ")} • {item.category_id}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="font-bold text-slate-900">
+                      ₹{item.price_inr.toLocaleString("en-IN")}
+                    </span>
+                    <Badge
+                      variant={
+                        item.status === "approved"
+                          ? "success"
+                          : item.status === "pending_review"
+                          ? "warning"
+                          : item.status === "rejected"
+                          ? "destructive"
+                          : "secondary"
+                      }
+                      className="text-[10px]"
+                    >
+                      {item.status.replace("_", " ")}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Store Info */}

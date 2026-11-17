@@ -17,6 +17,7 @@ import {
   RefreshCw,
   Sliders,
   History,
+  Package,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -185,8 +186,14 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 text-xs text-slate-500">
-          <span className="flex items-center gap-1.5 font-semibold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200">
+        <div className="flex items-center gap-2">
+          <Button asChild size="sm" className="gap-1.5 text-xs bg-primary-600 hover:bg-primary-700 text-white">
+            <Link href="/dashboard/admin/listings">
+              <Package className="h-4 w-4" />
+              Listing Moderation Queue
+            </Link>
+          </Button>
+          <span className="flex items-center gap-1.5 font-semibold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200 text-xs">
             <ShieldCheck className="h-4 w-4" />
             Server Authorization Enforced
           </span>

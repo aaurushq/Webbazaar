@@ -179,13 +179,22 @@ export function Header() {
               </Link>
 
               {isSeller && (
-                <Link
-                  href="/dashboard/seller"
-                  className="px-2.5 py-1 text-xs font-medium text-slate-600 hover:text-slate-900 rounded hover:bg-slate-100 transition-colors"
-                  title="Seller Dashboard"
-                >
-                  Seller
-                </Link>
+                <>
+                  <Link
+                    href="/dashboard/seller"
+                    className="px-2.5 py-1 text-xs font-medium text-slate-600 hover:text-slate-900 rounded hover:bg-slate-100 transition-colors"
+                    title="Seller Dashboard"
+                  >
+                    Seller
+                  </Link>
+                  <Link
+                    href="/dashboard/seller/listings"
+                    className="px-2 py-1 text-xs font-medium text-primary-700 bg-primary-50 hover:bg-primary-100 rounded transition-colors"
+                    title="Manage Listings"
+                  >
+                    Listings
+                  </Link>
+                </>
               )}
 
               {isAdmin && (

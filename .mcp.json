@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "reui": {
+      "type": "http",
+      "url": "https://mcp.reui.io/api/mcp"
+    },
+    "resend": {
+      "type": "http",
+      "url": "https://mcp.resend.com/mcp",
+      "serverUrl": "https://mcp.resend.com/mcp"
+    }
+  }
+}

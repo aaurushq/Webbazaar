@@ -34,6 +34,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ListingCard } from "@/components/marketplace/ListingCard";
+import { ContactSellerButton } from "@/components/messaging/ContactSellerButton";
 import { formatINR, getListingTypeBadgeClass, getListingTypeLabel } from "@/lib/utils";
 import { getUnifiedListingBySlug } from "@/lib/listings/public";
 
@@ -354,51 +355,26 @@ export default function ListingDetailPage({ params }: ListingDetailPageProps) {
               </Button>
             )}
 
-            {/* Primary Action Button (Honest Phase Modal Trigger) */}
-            <div className="space-y-2.5">
-              {isBusiness ? (
-                <Button
-                  size="lg"
-                  className="w-full justify-center gap-2 font-bold shadow-md bg-amber-700 hover:bg-amber-800 text-white"
-                  onClick={() => setModalAction("REQUEST_NDA")}
-                >
-                  <FileText className="h-4 w-4" />
-                  <span>Request NDA & Financial Dossier</span>
-                </Button>
-              ) : (
-                <Button
-                  size="lg"
-                  className="w-full justify-center gap-2 font-bold shadow-md"
-                  onClick={() => setModalAction("BUY_INSTANT")}
-                >
-                  <ShoppingCart className="h-4 w-4" />
-                  <span>{isService ? "Order Service Package" : "Buy & Download Code"}</span>
-                </Button>
-              )}
-
-              <Button
-                variant="ghost"
-                className="w-full justify-center gap-2 text-xs text-slate-600 hover:text-slate-900"
-                onClick={() => setModalAction("CONTACT_SELLER")}
-              >
-                <MessageSquare className="h-4 w-4 text-slate-400" />
-                <span>Ask Seller a Question</span>
-              </Button>
+            {/* Primary Action: Contact Seller (Live Real-Time Messaging on Approved Listings) */}
+            <div className="flex flex-col gap-3">
+              <ContactSellerButton
+                listingId={listing.id}
+                listingSlug={listing.slug}
+                sellerId={listing.seller.id}
+                isDemo={listing.isDemo !== false}
+                listingStatus="approved"
+              />
             </div>
 
-            {/* Guarantees & Features Checklist */}
-            <div className="border-t border-slate-100 pt-4 space-y-2 text-xs text-slate-600">
+            {/* Direct MVP Info Checklist */}
+            <div className="border-t border-slate-100 pt-4 flex flex-col gap-2 text-xs text-slate-600">
               <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600 flex-shrink-0" />
-                <span>Instant digital entitlement access</span>
+                <MessageSquare className="size-4 text-brand-primary shrink-0" aria-hidden="true" />
+                <span>Direct buyer–seller communication via WebBazaar Chat</span>
               </div>
               <div className="flex items-center gap-2">
-                <Shield className="h-4 w-4 text-primary-600 flex-shrink-0" />
-                <span>Verified code ownership verification</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-sky-600 flex-shrink-0" />
-                <span>Seller response time: {listing.seller.responseRateDemo}</span>
+                <CheckCircle2 className="size-4 text-brand-primary shrink-0" aria-hidden="true" />
+                <span>Discuss customization, scope, and delivery terms directly</span>
               </div>
             </div>
 

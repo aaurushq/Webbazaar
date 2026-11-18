@@ -24,11 +24,15 @@ function mapDbListingToMarketplace(dbItem: any): Listing {
     previewImageUrl: defaultImage,
     galleryImages: [defaultImage],
     seller: {
-      id: dbItem.seller?.id || dbItem.seller_id || "seller-unknown",
-      name: dbItem.seller?.display_name || "Verified Merchant",
+      id: dbItem.seller_id || dbItem.seller?.id || dbItem.profiles?.id || "seller-unknown",
+      name:
+        dbItem.seller?.display_name ||
+        dbItem.profiles?.display_name ||
+        "Verified Merchant",
       handle: "@verified_merchant",
       avatarUrl:
         dbItem.seller?.avatar_path ||
+        dbItem.profiles?.avatar_path ||
         "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",
       bio: "Verified merchant on WebBazaar India.",
       location: "India",

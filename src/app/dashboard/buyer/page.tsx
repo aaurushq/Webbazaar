@@ -13,11 +13,15 @@ import {
   ExternalLink,
   ShieldCheck,
   CheckCircle2,
+  MessageSquare,
+  ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { updateProfileAction, signOutAction } from "@/lib/auth/actions";
 import { createClient } from "@/lib/supabase/client";
+import { getMessagingDashboardStatsAction } from "@/lib/messaging/actions";
+import type { MessagingDashboardStats } from "@/lib/messaging/types";
 
 export default function BuyerDashboardPage() {
   const [activeTab, setActiveTab] = React.useState<"overview" | "purchases" | "wishlist" | "settings">(
@@ -30,6 +34,15 @@ export default function BuyerDashboardPage() {
   const [isLoadingProfile, setIsLoadingProfile] = React.useState(true);
   const [statusMsg, setStatusMsg] = React.useState<{ type: "success" | "error"; text: string } | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
+  const [messagingStats, setMessagingStats] = React.useState<MessagingDashboardStats>({
+    buyerConversationCount: 0,
+    buyerUnreadCount: 0,
+    sellerInquiryCount: 0,
+    sellerUnreadCount: 0,
+    totalUnreadCount: 0,
+    recentBuyerConversations: [],
+    recentSellerInquiries: [],
+  });
 
   React.useEffect(() => {
     const supabase = createClient();
@@ -43,11 +56,11 @@ export default function BuyerDashboardPage() {
         if (user) {
           setUserEmail(user.email || "");
 
-          const { data: profile } = await (supabase as any)
-            .from("profiles")
-            .select("*")
-            .eq("id", user.id)
-            .single();
+          const [{ data: profile }, { data: roles }, msgRes] = await Promise.all([
+            (supabase as any).from("profiles").select("*").eq("id", user.id).single(),
+            (supabase as any).from("user_roles").select("role").eq("user_id", user.id),
+            getMessagingDashboardStatsAction(),
+          ]);
 
           if (profile) {
             setDisplayName(profile.display_name || user.email?.split("@")[0] || "User");
@@ -56,13 +69,12 @@ export default function BuyerDashboardPage() {
             setDisplayName(user.email?.split("@")[0] || "User");
           }
 
-          const { data: roles } = await (supabase as any)
-            .from("user_roles")
-            .select("role")
-            .eq("user_id", user.id);
-
           if (roles) {
             setUserRoles(roles.map((r: any) => r.role));
+          }
+
+          if (msgRes.success) {
+            setMessagingStats(msgRes.data);
           }
         }
       } catch (err) {
@@ -126,6 +138,17 @@ export default function BuyerDashboardPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          <Button asChild variant="outline" size="sm" className="gap-1.5 border-brand-border">
+            <Link href="/dashboard/messages">
+              <MessageSquare className="size-3.5 text-brand-primary" aria-hidden="true" />
+              <span>Messages</span>
+              {messagingStats.buyerUnreadCount > 0 && (
+                <span className="rounded-full bg-brand-primary px-1.5 py-0.5 text-xs font-semibold text-white tabular-nums">
+                  {messagingStats.buyerUnreadCount}
+                </span>
+              )}
+            </Link>
+          </Button>
           {isVerifiedSeller ? (
             <Button asChild size="sm" variant="default">
               <Link href="/dashboard/seller">Seller Dashboard</Link>
@@ -181,38 +204,99 @@ export default function BuyerDashboardPage() {
 
       {/* Tab 1: Overview */}
       {activeTab === "overview" && (
-        <div className="space-y-6">
+        <div className="flex flex-col gap-6">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="rounded-xl border border-slate-200 bg-white p-5">
-              <span className="text-xs font-medium text-slate-500 uppercase">Total Purchases</span>
-              <p className="text-2xl font-extrabold text-slate-900 mt-1">0</p>
-              <span className="text-[11px] text-slate-400">Phase 3: Digital Escrow Checkout</span>
-            </div>
-            <div className="rounded-xl border border-slate-200 bg-white p-5">
-              <span className="text-xs font-medium text-slate-500 uppercase">Active Inquiries</span>
-              <p className="text-2xl font-extrabold text-slate-900 mt-1">0</p>
-              <span className="text-[11px] text-slate-400">Phase 4: Direct Messaging</span>
-            </div>
-            <div className="rounded-xl border border-slate-200 bg-white p-5">
-              <span className="text-xs font-medium text-slate-500 uppercase">Verification Status</span>
-              <p className="text-base font-bold text-emerald-600 mt-1 flex items-center gap-1.5">
-                <CheckCircle2 className="h-4 w-4" />
-                Email Verified
+            <Link
+              href="/dashboard/messages"
+              className="rounded-xl border border-brand-border bg-white p-5 hover:border-[#C5C0FA] transition-colors flex flex-col gap-1"
+            >
+              <span className="text-xs font-medium text-[#58607D] uppercase">My Conversations</span>
+              <p
+                data-testid="buyer-conversations-count"
+                className="text-2xl font-extrabold text-brand-dark tabular-nums"
+              >
+                {messagingStats.buyerConversationCount}
               </p>
-              <span className="text-[11px] text-slate-400">Authenticated via Supabase</span>
+              <span className="text-xs text-brand-primary font-medium">Open direct inbox →</span>
+            </Link>
+            <Link
+              href="/dashboard/messages"
+              className="rounded-xl border border-brand-border bg-white p-5 hover:border-[#C5C0FA] transition-colors flex flex-col gap-1"
+            >
+              <span className="text-xs font-medium text-[#58607D] uppercase">Unread Messages</span>
+              <p
+                data-testid="buyer-unread-count"
+                className="text-2xl font-extrabold text-brand-primary tabular-nums"
+              >
+                {messagingStats.buyerUnreadCount}
+              </p>
+              <span className="text-xs text-[#646B88]">Replies awaiting your review</span>
+            </Link>
+            <div className="rounded-xl border border-brand-border bg-white p-5 flex flex-col gap-1">
+              <span className="text-xs font-medium text-[#58607D] uppercase">Account Status</span>
+              <p className="text-base font-bold text-brand-dark flex items-center gap-1.5 pt-1">
+                <CheckCircle2 className="size-4 text-brand-primary" aria-hidden="true" />
+                <span>Authenticated Buyer</span>
+              </p>
+              <span className="text-xs text-[#646B88]">Connected to Supabase Auth</span>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 space-y-3">
-            <h3 className="font-bold text-slate-900 text-sm">Welcome to your WebBazaar Account</h3>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              You are signed in as <span className="font-semibold text-slate-900">{userEmail}</span>. From this portal, you can explore marketplace offerings, apply to become an approved seller, and manage your account credentials.
-            </p>
-            <div className="pt-2">
-              <Button asChild size="sm">
-                <Link href="/marketplace">Explore Available Websites</Link>
-              </Button>
+          {/* My Conversations Live List */}
+          <div className="rounded-2xl border border-brand-border bg-white p-6 flex flex-col gap-4">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="size-4 text-brand-primary" aria-hidden="true" />
+                <h3 className="font-bold text-brand-dark text-sm">My Conversations</h3>
+              </div>
+              <Link
+                href="/dashboard/messages"
+                className="text-xs font-semibold text-brand-primary hover:underline flex items-center gap-1"
+              >
+                <span>View all</span>
+                <ArrowRight className="size-3.5" aria-hidden="true" />
+              </Link>
             </div>
+
+            {messagingStats.recentBuyerConversations.length === 0 ? (
+              <div className="rounded-xl border border-brand-border bg-brand-canvas/60 p-6 text-center flex flex-col items-center gap-2.5">
+                <p className="text-sm font-medium text-brand-dark">No seller conversations yet</p>
+                <p className="text-xs text-[#58607D] max-w-md">
+                  Browse approved websites and apps, preview live demos, and click Contact Seller to message creators directly.
+                </p>
+                <Button asChild size="sm" className="bg-brand-primary hover:bg-primary-700 text-white">
+                  <Link href="/marketplace">Explore Available Websites</Link>
+                </Button>
+              </div>
+            ) : (
+              <div className="divide-y divide-[#F0F1FA]">
+                {messagingStats.recentBuyerConversations.map((conv) => (
+                  <Link
+                    key={conv.id}
+                    href={`/dashboard/messages/${conv.id}`}
+                    className="py-3 flex items-center justify-between gap-4 hover:bg-brand-canvas/50 px-2 rounded-lg transition-colors"
+                  >
+                    <div className="min-w-0 flex flex-col gap-0.5">
+                      <p className="text-sm font-semibold text-brand-dark truncate">
+                        {conv.listing?.title || "Marketplace Listing"}
+                      </p>
+                      <p className="text-xs text-[#58607D] truncate">
+                        Seller: {conv.seller?.display_name || "Listing Seller"}
+                        {conv.lastMessage ? ` • ${conv.lastMessage.body}` : ""}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2.5 shrink-0">
+                      {conv.unreadCount > 0 && (
+                        <span className="rounded-full bg-brand-primary px-2 py-0.5 text-xs font-semibold text-white tabular-nums">
+                          {conv.unreadCount} new
+                        </span>
+                      )}
+                      <span className="text-xs font-semibold text-brand-primary">Open →</span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

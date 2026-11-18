@@ -12,11 +12,13 @@ import {
   AppWindow,
   Compass,
   Store,
+  MessageSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { signOutAction } from "@/lib/auth/actions";
+import { getMessagingDashboardStatsAction } from "@/lib/messaging/actions";
 
 const NAV_LINKS = [
   { href: "/ready-websites", label: "Explore Websites", icon: Globe },
@@ -31,6 +33,7 @@ export function Header() {
   const [user, setUser] = React.useState<{ id: string; email?: string } | null>(null);
   const [userRoles, setUserRoles] = React.useState<string[]>([]);
   const [displayName, setDisplayName] = React.useState<string | null>(null);
+  const [unreadMessagesCount, setUnreadMessagesCount] = React.useState<number>(0);
 
   React.useEffect(() => {
     const supabase = createClient();
@@ -63,10 +66,16 @@ export function Header() {
         if (roles) {
           setUserRoles(roles.map((r: any) => r.role));
         }
+
+        const msgStats = await getMessagingDashboardStatsAction();
+        if (msgStats.success) {
+          setUnreadMessagesCount(msgStats.data.totalUnreadCount);
+        }
       } else {
         setUser(null);
         setDisplayName(null);
         setUserRoles([]);
+        setUnreadMessagesCount(0);
       }
     };
 
@@ -88,7 +97,7 @@ export function Header() {
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [pathname]);
 
   const isAdmin = userRoles.includes("ADMIN");
   const isSeller = userRoles.includes("VERIFIED_SELLER");
@@ -141,6 +150,19 @@ export function Header() {
         <div className="hidden lg:flex items-center gap-3 shrink-0">
           {user ? (
             <div className="flex items-center gap-2">
+              <Link
+                href="/dashboard/messages"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-brand-primary bg-primary-50 hover:bg-primary-100 transition-colors"
+              >
+                <MessageSquare className="size-3.5" aria-hidden="true" />
+                <span>Messages</span>
+                {unreadMessagesCount > 0 && (
+                  <span className="rounded-full bg-brand-primary px-1.5 py-0.5 text-[10px] font-bold text-white tabular-nums">
+                    {unreadMessagesCount}
+                  </span>
+                )}
+              </Link>
+
               <Link
                 href="/dashboard/buyer"
                 className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-brand-border bg-white hover:bg-brand-canvas transition-colors text-xs font-semibold text-brand-dark"
@@ -246,6 +268,18 @@ export function Header() {
           <div className="pt-3 border-t border-brand-border flex flex-col gap-2">
             {user ? (
               <>
+                <Link
+                  href="/dashboard/messages"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center justify-between px-3 py-2 text-sm font-semibold text-brand-primary bg-primary-50 rounded-lg"
+                >
+                  <span>Messages</span>
+                  {unreadMessagesCount > 0 && (
+                    <span className="rounded-full bg-brand-primary px-2 py-0.5 text-xs font-bold text-white tabular-nums">
+                      {unreadMessagesCount}
+                    </span>
+                  )}
+                </Link>
                 <Link
                   href="/dashboard/buyer"
                   onClick={() => setMobileMenuOpen(false)}

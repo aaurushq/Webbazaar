@@ -13,11 +13,14 @@ import {
   ArrowRight,
   ShieldCheck,
   Package,
+  MessageSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/client";
 import { getSellerDashboardStatsAction, getSellerListingsAction } from "@/lib/listings/actions";
+import { getMessagingDashboardStatsAction } from "@/lib/messaging/actions";
+import type { MessagingDashboardStats } from "@/lib/messaging/types";
 
 export default function SellerDashboardPage() {
   const [loading, setLoading] = React.useState(true);
@@ -25,6 +28,15 @@ export default function SellerDashboardPage() {
   const [application, setApplication] = React.useState<any>(null);
   const [stats, setStats] = React.useState({ total: 0, draft: 0, pending: 0, approved: 0, rejected: 0, archived: 0 });
   const [recentListings, setRecentListings] = React.useState<any[]>([]);
+  const [messagingStats, setMessagingStats] = React.useState<MessagingDashboardStats>({
+    buyerConversationCount: 0,
+    buyerUnreadCount: 0,
+    sellerInquiryCount: 0,
+    sellerUnreadCount: 0,
+    totalUnreadCount: 0,
+    recentBuyerConversations: [],
+    recentSellerInquiries: [],
+  });
 
   React.useEffect(() => {
     const supabase = createClient();
@@ -45,12 +57,14 @@ export default function SellerDashboardPage() {
 
           if (profile) {
             setSellerProfile(profile);
-            const [statsRes, listingsRes] = await Promise.all([
+            const [statsRes, listingsRes, msgRes] = await Promise.all([
               getSellerDashboardStatsAction(),
               getSellerListingsAction(),
+              getMessagingDashboardStatsAction(),
             ]);
             if (statsRes.stats) setStats(statsRes.stats);
             if (listingsRes.listings) setRecentListings(listingsRes.listings.slice(0, 5));
+            if (msgRes.success) setMessagingStats(msgRes.data);
           } else {
             // Check seller application status
             const { data: app } = await (supabase as any)
@@ -107,7 +121,18 @@ export default function SellerDashboardPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button asChild variant="outline" size="sm" className="gap-1.5 text-xs border-brand-border">
+              <Link href="/dashboard/messages">
+                <MessageSquare className="size-4 text-brand-primary" aria-hidden="true" />
+                <span>Buyer Inquiries</span>
+                {messagingStats.sellerUnreadCount > 0 && (
+                  <span className="rounded-full bg-brand-primary px-1.5 py-0.5 text-xs font-semibold text-white tabular-nums">
+                    {messagingStats.sellerUnreadCount}
+                  </span>
+                )}
+              </Link>
+            </Button>
             <Button asChild variant="outline" size="sm" className="gap-1.5 text-xs">
               <Link href="/dashboard/seller/listings">
                 <Package className="h-4 w-4" />
@@ -121,6 +146,47 @@ export default function SellerDashboardPage() {
               </Link>
             </Button>
           </div>
+        </div>
+
+        {/* Real Database Messaging KPIs */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Link
+            href="/dashboard/messages"
+            className="rounded-xl border border-brand-border bg-white p-5 hover:border-[#C5C0FA] transition-colors flex items-center justify-between gap-4"
+          >
+            <div className="flex flex-col gap-1">
+              <span className="text-xs font-medium text-[#58607D] uppercase">Buyer Inquiries</span>
+              <p
+                data-testid="seller-inquiries-count"
+                className="text-2xl font-extrabold text-brand-dark tabular-nums"
+              >
+                {messagingStats.sellerInquiryCount}
+              </p>
+              <span className="text-xs text-brand-primary font-medium">Open seller inbox →</span>
+            </div>
+            <div className="flex size-11 items-center justify-center rounded-xl bg-[#F2F0FF] text-brand-primary shrink-0">
+              <MessageSquare className="size-5" aria-hidden="true" />
+            </div>
+          </Link>
+
+          <Link
+            href="/dashboard/messages"
+            className="rounded-xl border border-brand-border bg-white p-5 hover:border-[#C5C0FA] transition-colors flex items-center justify-between gap-4"
+          >
+            <div className="flex flex-col gap-1">
+              <span className="text-xs font-medium text-[#58607D] uppercase">Unread Messages</span>
+              <p
+                data-testid="seller-unread-count"
+                className="text-2xl font-extrabold text-brand-primary tabular-nums"
+              >
+                {messagingStats.sellerUnreadCount}
+              </p>
+              <span className="text-xs text-[#646B88]">Buyer messages waiting for a reply</span>
+            </div>
+            <div className="flex size-11 items-center justify-center rounded-xl bg-[#F2F0FF] text-brand-primary shrink-0">
+              <Clock className="size-5" aria-hidden="true" />
+            </div>
+          </Link>
         </div>
 
         {/* Real Database Stats */}
@@ -150,6 +216,56 @@ export default function SellerDashboardPage() {
             <p className="text-2xl font-extrabold text-red-900 mt-1">{stats.rejected}</p>
             <span className="text-[11px] text-red-600">Requires seller revisions</span>
           </div>
+        </div>
+
+        {/* Buyer Inquiries Live List */}
+        <div className="rounded-2xl border border-brand-border bg-white p-6 flex flex-col gap-4">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <MessageSquare className="size-4 text-brand-primary" aria-hidden="true" />
+              <h3 className="font-bold text-brand-dark text-sm">Recent Buyer Inquiries</h3>
+            </div>
+            <Link
+              href="/dashboard/messages"
+              className="text-xs font-semibold text-brand-primary hover:underline flex items-center gap-1"
+            >
+              <span>Open Inbox ({messagingStats.sellerInquiryCount})</span>
+              <ArrowRight className="size-3.5" aria-hidden="true" />
+            </Link>
+          </div>
+
+          {messagingStats.recentSellerInquiries.length === 0 ? (
+            <div className="text-center py-6 text-xs text-[#646B88]">
+              No buyer inquiries yet. Once buyers contact you on your approved listings, conversations will appear here.
+            </div>
+          ) : (
+            <div className="divide-y divide-[#F0F1FA]">
+              {messagingStats.recentSellerInquiries.map((conv) => (
+                <Link
+                  key={conv.id}
+                  href={`/dashboard/messages/${conv.id}`}
+                  className="py-3 flex items-center justify-between gap-4 hover:bg-brand-canvas/60 px-2 rounded-lg transition-colors"
+                >
+                  <div className="min-w-0 flex flex-col gap-0.5">
+                    <p className="text-sm font-semibold text-brand-dark truncate">
+                      {conv.buyer?.display_name || "Interested Buyer"} — {conv.listing?.title || "Listing"}
+                    </p>
+                    <p className="text-xs text-[#58607D] truncate">
+                      {conv.lastMessage ? conv.lastMessage.body : "Conversation started"}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2.5 shrink-0">
+                    {conv.unreadCount > 0 && (
+                      <span className="rounded-full bg-brand-primary px-2 py-0.5 text-xs font-semibold text-white tabular-nums">
+                        {conv.unreadCount} unread
+                      </span>
+                    )}
+                    <span className="text-xs font-semibold text-brand-primary">Reply →</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Recent Listings Summary */}

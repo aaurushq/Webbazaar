@@ -1,88 +1,79 @@
 import Link from "next/link";
-import { ShieldCheck, Heart, Sparkles } from "lucide-react";
 
 export function Footer() {
   return (
-    <footer className="border-t border-slate-200 bg-slate-900 text-slate-300">
-      {/* Top Banner inside Footer */}
-      <div className="border-b border-slate-800 py-8">
-        <div className="container mx-auto px-4 sm:px-6">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-600 text-white font-bold text-xl shadow-inner">
+    <footer className="bg-brand-dark text-[#B8BED9] border-t border-white/10">
+      <div className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8 py-14">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-10">
+          {/* Brand Summary */}
+          <div className="lg:col-span-5 flex flex-col gap-4">
+            <Link href="/" className="flex items-center gap-2.5 w-fit">
+              <div
+                aria-hidden="true"
+                className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#6257E8] to-[#9B5DE5] text-white font-bold text-base"
+              >
                 W
               </div>
-              <div>
-                <h4 className="font-bold text-white text-lg">WebBazaar</h4>
-                <p className="text-xs text-slate-400">Discover. Customize. Launch.</p>
-              </div>
-            </div>
-            <div className="flex flex-wrap items-center gap-6 text-xs text-slate-400">
-              <span className="flex items-center gap-1.5">
-                <ShieldCheck className="h-4 w-4 text-emerald-400" />
-                Verified Seller Program (Phase 2)
+              <span className="font-bold text-xl tracking-[-0.03em] text-white">
+                Web<span className="text-[#A8A0FF]">Bazaar</span>
               </span>
-              <span className="flex items-center gap-1.5">
-                <Sparkles className="h-4 w-4 text-amber-400" />
-                Built for Indian Founders & Creators
-              </span>
-            </div>
+            </Link>
+            <p className="text-sm text-[#9CA3C4] leading-relaxed max-w-sm">
+              Discover ready-made websites and apps from independent developers. Preview live demos, connect directly with creators, and customize your next digital project.
+            </p>
+            <p className="text-xs text-[#7E86A8] leading-relaxed max-w-sm">
+              WebBazaar is a discovery marketplace. Buyers and sellers discuss customization, pricing, payment, and code delivery directly.
+            </p>
           </div>
-        </div>
-      </div>
 
-      {/* Main Links Grid */}
-      <div className="container mx-auto px-4 sm:px-6 py-12">
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8">
-          {/* Col 1: Marketplace Verticals */}
-          <div className="space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-wider text-white">Marketplace</p>
-            <ul className="space-y-2 text-sm">
+          {/* Explore */}
+          <div className="lg:col-span-2 flex flex-col gap-3">
+            <p className="text-xs font-semibold uppercase tracking-wider text-white">
+              Explore
+            </p>
+            <ul className="flex flex-col gap-2.5 text-sm">
               <li>
                 <Link href="/ready-websites" className="hover:text-white transition-colors">
-                  Ready-Made Websites
+                  Explore Websites
                 </Link>
               </li>
               <li>
-                <Link href="/templates" className="hover:text-white transition-colors">
-                  Templates & Code
-                </Link>
-              </li>
-              <li>
-                <Link href="/businesses" className="hover:text-white transition-colors">
-                  Online Businesses
-                </Link>
-              </li>
-              <li>
-                <Link href="/services" className="hover:text-white transition-colors">
-                  Customization Services
+                <Link href="/marketplace?category=SaaS+%26+Web+Apps" className="hover:text-white transition-colors">
+                  Explore Apps
                 </Link>
               </li>
               <li>
                 <Link href="/marketplace" className="hover:text-white transition-colors">
-                  Browse All Listings
+                  Full Marketplace
+                </Link>
+              </li>
+              <li>
+                <Link href="/#how-it-works" className="hover:text-white transition-colors">
+                  How It Works
                 </Link>
               </li>
             </ul>
           </div>
 
-          {/* Col 2: Categories */}
-          <div className="space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-wider text-white">Categories</p>
-            <ul className="space-y-2 text-sm">
+          {/* Categories */}
+          <div className="lg:col-span-3 flex flex-col gap-3">
+            <p className="text-xs font-semibold uppercase tracking-wider text-white">
+              Popular Categories
+            </p>
+            <ul className="flex flex-col gap-2.5 text-sm">
               <li>
-                <Link href="/marketplace?category=E-Commerce" className="hover:text-white transition-colors">
-                  E-Commerce & D2C
+                <Link href="/marketplace?category=SaaS+%26+Web+Apps" className="hover:text-white transition-colors">
+                  SaaS &amp; Web Apps
                 </Link>
               </li>
               <li>
-                <Link href="/marketplace?category=SaaS+%26+Web+Apps" className="hover:text-white transition-colors">
-                  SaaS & Micro-Apps
+                <Link href="/marketplace?category=E-Commerce" className="hover:text-white transition-colors">
+                  E-Commerce Storefronts
                 </Link>
               </li>
               <li>
                 <Link href="/marketplace?category=Restaurant+%26+Food" className="hover:text-white transition-colors">
-                  Restaurants & Cloud Kitchens
+                  Restaurants &amp; Food
                 </Link>
               </li>
               <li>
@@ -90,75 +81,43 @@ export function Footer() {
                   Real Estate Portals
                 </Link>
               </li>
-              <li>
-                <Link href="/marketplace?category=Healthcare+%26+Wellness" className="hover:text-white transition-colors">
-                  Healthcare & Clinics
-                </Link>
-              </li>
             </ul>
           </div>
 
-          {/* Col 3: For Sellers */}
-          <div className="space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-wider text-white">Sellers</p>
-            <ul className="space-y-2 text-sm">
-              <li>
-                <Link href="/sell" className="hover:text-white transition-colors font-medium text-emerald-400">
-                  Become a Seller →
-                </Link>
-              </li>
-              <li>
-                <Link href="/sell#commissions" className="hover:text-white transition-colors">
-                  Commission Rates
-                </Link>
-              </li>
-              <li>
-                <Link href="/sell#verification" className="hover:text-white transition-colors">
-                  Verification Guidelines
-                </Link>
-              </li>
-              <li>
-                <Link href="/sell#faq" className="hover:text-white transition-colors">
-                  Seller FAQ
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Col 4: Platform & Trust */}
-          <div className="space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-wider text-white">Architecture & Trust</p>
-            <ul className="space-y-2 text-sm">
-              <li className="text-slate-400">Primary Currency: INR (₹)</li>
-              <li className="text-slate-400">Host: Vercel Serverless</li>
-              <li className="text-slate-400">Backend: Supabase PostgreSQL</li>
-              <li className="text-slate-400">Payments: Razorpay (Sandbox)</li>
-            </ul>
-          </div>
-
-          {/* Col 5: Legal & Notice */}
-          <div className="col-span-2 lg:col-span-1 space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-wider text-white">Legal & Compliance</p>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Legal documents are currently in draft status for regulatory compliance under Indian IT Act and consumer protection rules.
+          {/* For Sellers */}
+          <div className="lg:col-span-2 flex flex-col gap-3">
+            <p className="text-xs font-semibold uppercase tracking-wider text-white">
+              Sellers
             </p>
-            <div className="flex flex-col gap-1 text-xs text-slate-400">
-              <span className="italic">[Draft] Terms of Service</span>
-              <span className="italic">[Draft] Privacy Policy</span>
-              <span className="italic">[Draft] Escrow & Settlement Terms</span>
-              <span className="italic">[Draft] Refund & Dispute Policy</span>
-            </div>
+            <ul className="flex flex-col gap-2.5 text-sm">
+              <li>
+                <Link href="/sell" className="hover:text-white transition-colors">
+                  For Sellers
+                </Link>
+              </li>
+              <li>
+                <Link href="/become-a-seller" className="text-[#B6AEFF] hover:text-white font-medium transition-colors">
+                  Start Selling
+                </Link>
+              </li>
+              <li>
+                <Link href="/login" className="hover:text-white transition-colors">
+                  Log In
+                </Link>
+              </li>
+              <li>
+                <Link href="/register" className="hover:text-white transition-colors">
+                  Create Account
+                </Link>
+              </li>
+            </ul>
           </div>
         </div>
-      </div>
 
-      {/* Bottom Bar */}
-      <div className="border-t border-slate-800 py-6 text-xs text-slate-500">
-        <div className="container mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p>© {new Date().getFullYear()} WebBazaar. All rights reserved. Platform Phase 1 Frontend Preview.</p>
-          <p className="flex items-center gap-1 text-slate-400">
-            Crafted with <Heart className="h-3 w-3 text-red-400 fill-red-400" /> for Indian Tech Founders
-          </p>
+        {/* Bottom Bar */}
+        <div className="mt-12 pt-6 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[#7E86A8]">
+          <p>© {new Date().getFullYear()} WebBazaar. All rights reserved.</p>
+          <p>Listing prices displayed in Indian Rupees (INR).</p>
         </div>
       </div>
     </footer>

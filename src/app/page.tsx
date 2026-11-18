@@ -2,357 +2,803 @@
 
 import * as React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   Search,
   ArrowRight,
-  ShieldCheck,
-  Zap,
-  Lock,
-  Layers,
-  Coins,
-  CheckCircle,
-  Eye,
-  Rocket,
+  ArrowUpRight,
   Sparkles,
-  TrendingUp,
-  Code2,
-  Globe2,
-  Briefcase,
-  Terminal,
+  Check,
+  AppWindow,
+  ShoppingBag,
+  UtensilsCrossed,
+  Building2,
+  Compass,
+  MessageSquare,
+  SlidersHorizontal,
+  Send,
+  Eye,
+  Users,
+  Layers,
+  IndianRupee,
+  ExternalLink,
+  RefreshCw,
+  Globe,
+  Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { DEMO_LISTINGS } from "@/data/demo-listings";
-import { Listing } from "@/types/marketplace";
-import { ListingCard } from "@/components/marketplace/ListingCard";
-import { CategoryCard } from "@/components/marketplace/CategoryCard";
-import { getUnifiedMarketplaceListings } from "@/lib/listings/public";
+import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  HeroBrowserPreview,
+  type HeroRealListingPreview,
+} from "@/components/home/HeroBrowserPreview";
+import { getPublicApprovedListingsAction } from "@/lib/listings/actions";
+import { formatINR } from "@/lib/utils";
+
+interface ApprovedListingItem {
+  id: string;
+  title: string;
+  slug: string;
+  short_description: string;
+  listing_type: string;
+  category_id: string;
+  price_inr: number;
+  featured_image_path: string | null;
+  demo_url: string | null;
+  seller?: {
+    id?: string;
+    display_name?: string | null;
+  } | null;
+}
+
+const PRIMARY_CATEGORIES = [
+  {
+    title: "SaaS & Web Apps",
+    description:
+      "Dashboards, client portals, booking tools, and full-stack web apps built to adapt.",
+    href: "/marketplace?category=SaaS+%26+Web+Apps",
+    icon: AppWindow,
+    iconBg: "bg-[#F2F0FF] text-[#6257E8]",
+  },
+  {
+    title: "E-Commerce Storefronts",
+    description:
+      "Product catalogs, brand storefronts, and D2C shopping experiences ready to customize.",
+    href: "/marketplace?category=E-Commerce",
+    icon: ShoppingBag,
+    iconBg: "bg-[#F6EEFF] text-[#9B5DE5]",
+  },
+  {
+    title: "Restaurants & Food",
+    description:
+      "Online menus, cloud kitchen ordering sites, and table booking websites.",
+    href: "/marketplace?category=Restaurant+%26+Food",
+    icon: UtensilsCrossed,
+    iconBg: "bg-[#F2F0FF] text-[#6257E8]",
+  },
+  {
+    title: "Real Estate & Portals",
+    description:
+      "Property listing directories, agent lead portals, and local marketplace websites.",
+    href: "/marketplace?category=Real+Estate",
+    icon: Building2,
+    iconBg: "bg-[#F6EEFF] text-[#9B5DE5]",
+  },
+];
+
+const SECONDARY_CATEGORIES = [
+  { label: "Healthcare & Clinics", href: "/marketplace?category=Healthcare+%26+Wellness" },
+  { label: "Education & Courses", href: "/marketplace?category=Education+%26+EdTech" },
+  { label: "Agency & Portfolios", href: "/marketplace?category=Agency+%26+Portfolio" },
+  { label: "Browse Ready Websites", href: "/ready-websites" },
+];
+
+const WORKFLOW_STEPS = [
+  {
+    step: "01",
+    title: "Discover",
+    description:
+      "Browse ready-made websites and apps by category, tech stack, and INR budget. Explore live demos before reaching out.",
+    icon: Compass,
+  },
+  {
+    step: "02",
+    title: "Connect",
+    description:
+      "Reach out directly to the independent developer who built the project to ask questions and review deliverables.",
+    icon: MessageSquare,
+  },
+  {
+    step: "03",
+    title: "Customize",
+    description:
+      "Discuss brand styling, domain setup, or custom feature extensions tailored to your business goals.",
+    icon: SlidersHorizontal,
+  },
+  {
+    step: "04",
+    title: "Deliver",
+    description:
+      "Arrange payment and code handover directly with the seller on mutually agreed terms and launch faster.",
+    icon: Send,
+  },
+];
+
+const BUYER_BENEFITS = [
+  {
+    title: "Preview Live Demos First",
+    description:
+      "Inspect working pages, layouts, and user flows before spending time or budget on a project.",
+    icon: Eye,
+  },
+  {
+    title: "Direct Seller Access",
+    description:
+      "Communicate directly with the developer who created the website or app — no agency layers.",
+    icon: Users,
+  },
+  {
+    title: "Built to Customize",
+    description:
+      "Start with a working foundation and adapt branding, pages, and workflows to match your vision.",
+    icon: Layers,
+  },
+  {
+    title: "Clear INR Pricing",
+    description:
+      "See transparent seller-set starting prices in Indian Rupees up front before starting a conversation.",
+    icon: IndianRupee,
+  },
+];
+
+function getReadableType(listingType: string): string {
+  switch (listingType) {
+    case "READY_WEBSITE":
+      return "Ready Website";
+    case "TEMPLATE":
+      return "Web App / Template";
+    case "BUSINESS":
+      return "Online Business";
+    case "SERVICE":
+      return "Custom Service";
+    default:
+      return "Digital Project";
+  }
+}
 
 export default function HomePage() {
   const router = useRouter();
   const [heroSearch, setHeroSearch] = React.useState("");
-  const [featuredListings, setFeaturedListings] = React.useState<Listing[]>(
-    DEMO_LISTINGS.filter((item) => item.isFeatured).slice(0, 6)
-  );
+  const [approvedListings, setApprovedListings] = React.useState<ApprovedListingItem[]>([]);
+  const [listingsState, setListingsState] = React.useState<"loading" | "ready" | "error">("loading");
+  const [listingsError, setListingsError] = React.useState<string | null>(null);
+
+  const loadApprovedListings = React.useCallback(async () => {
+    setListingsState("loading");
+    setListingsError(null);
+    try {
+      const result = await getPublicApprovedListingsAction({ limit: 6 });
+      if (result.error) {
+        setListingsError("We could not load marketplace listings right now.");
+        setListingsState("error");
+        return;
+      }
+      setApprovedListings((result.listings as ApprovedListingItem[]) || []);
+      setListingsState("ready");
+    } catch {
+      setListingsError("We could not load marketplace listings right now.");
+      setListingsState("error");
+    }
+  }, []);
 
   React.useEffect(() => {
-    getUnifiedMarketplaceListings().then((items) => {
-      // Prioritize verified approved listings + featured demo listings
-      const liveItems = items.filter((item) => !item.isDemo);
-      const featuredDemos = items.filter((item) => item.isDemo && item.isFeatured);
-      const combined = [...liveItems, ...featuredDemos].slice(0, 6);
-      if (combined.length > 0) {
-        setFeaturedListings(combined);
-      }
-    });
-  }, []);
+    loadApprovedListings();
+  }, [loadApprovedListings]);
 
   const handleHeroSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (heroSearch.trim()) {
-      router.push(`/marketplace?q=${encodeURIComponent(heroSearch.trim())}`);
+    const trimmed = heroSearch.trim();
+    if (trimmed) {
+      router.push(`/marketplace?q=${encodeURIComponent(trimmed)}`);
     } else {
       router.push("/marketplace");
     }
   };
 
+  // Prefer a real approved listing that has an uploaded preview screenshot for the hero browser
+  const heroRealListing: HeroRealListingPreview | null = React.useMemo(() => {
+    const withImage = approvedListings.find(
+      (item) => Boolean(item.featured_image_path && item.featured_image_path.trim().length > 0)
+    );
+    if (!withImage || !withImage.featured_image_path) return null;
+    return {
+      title: withImage.title,
+      slug: withImage.slug,
+      category: withImage.category_id,
+      priceINR: Number(withImage.price_inr),
+      previewImageUrl: withImage.featured_image_path,
+      demoUrl: withImage.demo_url,
+    };
+  }, [approvedListings]);
+
   return (
-    <div className="flex flex-col min-h-screen">
-      {/* 1. HERO SECTION WITH AMBIENT VFX & GLOW */}
-      <section className="relative overflow-hidden bg-grid-pattern pt-16 pb-20 lg:pt-24 lg:pb-32 border-b border-slate-200/80">
-        {/* Ambient Glowing Background Orbs */}
-        <div className="absolute top-10 left-1/2 -translate-x-1/2 w-[600px] h-[350px] bg-gradient-to-tr from-indigo-500/15 via-primary-500/10 to-teal-400/15 rounded-full blur-3xl pointer-events-none animate-pulse-glow" />
-        <div className="absolute top-40 -left-20 w-80 h-80 bg-indigo-400/10 rounded-full blur-2xl pointer-events-none animate-float" />
-        <div className="absolute top-32 -right-20 w-80 h-80 bg-teal-400/10 rounded-full blur-2xl pointer-events-none" />
+    <div className="flex flex-col min-w-0 bg-white text-brand-dark">
+      {/* ========================================================= */}
+      {/* HERO SECTION — MANDATORY TWO-COLUMN WEBORA-INSPIRED SPLIT */}
+      {/* ========================================================= */}
+      <section className="relative overflow-hidden bg-brand-canvas border-b border-brand-border">
+        {/* Soft editorial top-right radial highlight */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -top-24 right-0 h-[520px] w-[620px] rounded-full bg-[radial-gradient(circle,rgba(98,87,232,0.12)_0%,rgba(155,93,229,0.06)_48%,transparent_75%)] blur-2xl"
+        />
 
-        <div className="container mx-auto px-4 sm:px-6 relative z-10">
-          <div className="max-w-4xl mx-auto text-center space-y-7">
-            {/* Live Floating Pill */}
-            <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-white/90 border border-indigo-200/70 shadow-xs backdrop-blur-md text-xs font-semibold transition-all hover:border-indigo-300">
-              <span className="flex h-2 w-2 relative">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-              </span>
-              <span className="bg-gradient-to-r from-primary-600 to-indigo-700 bg-clip-text text-transparent font-bold">
-                WEBBAZAAR 2.0
-              </span>
-              <span className="text-slate-300">•</span>
-              <span className="text-slate-600">India&apos;s #1 Digital Asset Ecosystem</span>
-            </div>
-
-            {/* Main Headline */}
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-slate-900 leading-[1.12]">
-              Buy & Sell Verified <br className="hidden sm:inline" />
-              <span className="bg-gradient-to-r from-indigo-600 via-primary-600 to-teal-600 bg-clip-text text-transparent">
-                Digital Assets & Codebases
-              </span>
-            </h1>
-
-            {/* Supporting Text */}
-            <p className="text-base sm:text-lg lg:text-xl text-slate-600 max-w-2xl mx-auto leading-relaxed">
-              Discover production-ready websites, SaaS templates, turnkey micro-businesses, and vetted engineering packages — all priced transparently in INR.
-            </p>
-
-            {/* Glassmorphic Search Bar */}
-            <form
-              onSubmit={handleHeroSearch}
-              className="max-w-2xl mx-auto mt-8 flex flex-col sm:flex-row gap-2 p-2 bg-white/95 rounded-2xl shadow-xl shadow-indigo-500/5 border border-slate-200/90 focus-within:ring-2 focus-within:ring-primary-500/40 focus-within:border-primary-400 transition-all backdrop-blur-md"
-            >
-              <div className="relative flex-1 flex items-center">
-                <Search className="absolute left-4 h-5 w-5 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Search 'Next.js boilerplate', 'GST SaaS', 'Doctor portal', 'E-commerce'..."
-                  value={heroSearch}
-                  onChange={(e) => setHeroSearch(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 bg-transparent focus:outline-none"
-                />
+        <div className="relative z-10 mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8 pt-10 pb-14 sm:pt-14 sm:pb-20 lg:pt-16 lg:pb-24">
+          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,48fr)_minmax(0,52fr)] gap-10 lg:gap-12 items-center">
+            {/* LEFT COLUMN (~48% on desktop) — Strictly left-aligned */}
+            <div className="flex flex-col items-start text-left gap-6 min-w-0">
+              {/* Announcement Badge */}
+              <div className="inline-flex items-center gap-2 rounded-full border border-[#E0DDF8] bg-white px-3.5 py-1.5 text-xs font-semibold text-[#5146D6] shadow-[0_2px_10px_-4px_rgba(98,87,232,0.18)]">
+                <Sparkles className="size-3.5 text-[#6257E8] shrink-0" aria-hidden="true" />
+                <span>Ready-Made Websites &amp; Apps Marketplace</span>
               </div>
-              <Button type="submit" size="lg" className="gap-2 sm:px-8 font-semibold shadow-md shadow-primary-500/20">
-                <span>Explore</span>
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </form>
 
-            {/* Quick Filter Tags with Micro-icons */}
-            <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
-              <span className="text-xs text-slate-400 font-medium">Trending searches:</span>
-              {[
-                { label: "Next.js Boilerplates", icon: Code2 },
-                { label: "Fintech SaaS", icon: TrendingUp },
-                { label: "Ready Portals", icon: Globe2 },
-                { label: "E-Commerce Stores", icon: Briefcase },
-              ].map((item) => (
-                <button
-                  key={item.label}
-                  type="button"
-                  onClick={() => router.push(`/marketplace?q=${encodeURIComponent(item.label)}`)}
-                  className="inline-flex items-center gap-1.5 text-xs px-3 py-1 rounded-full bg-slate-100/90 text-slate-700 hover:bg-indigo-50 hover:text-primary-700 hover:border-indigo-200 border border-transparent transition-colors"
+              {/* Bold Editorial Left-Aligned Headline */}
+              <h1 className="text-4xl sm:text-5xl lg:text-[56px] xl:text-[62px] font-extrabold tracking-[-0.035em] leading-[1.06] text-brand-dark">
+                Find a website.
+                <span className="block mt-1 bg-gradient-to-r from-[#6257E8] to-[#9B5DE5] bg-clip-text text-transparent">
+                  Make it yours.
+                </span>
+              </h1>
+
+              {/* Supporting Paragraph */}
+              <p className="text-base sm:text-lg text-[#4B526E] leading-relaxed max-w-[510px]">
+                Discover ready-made websites and apps from independent developers. Preview live demos, connect with sellers, and customize your next project.
+              </p>
+
+              {/* Functional Hero Search Bar */}
+              <form
+                onSubmit={handleHeroSearch}
+                role="search"
+                aria-label="Search WebBazaar marketplace"
+                className="w-full max-w-[540px] flex flex-col sm:flex-row items-stretch sm:items-center gap-2 rounded-2xl border border-[#DCE0F5] bg-white p-2 shadow-[0_16px_40px_-14px_rgba(16,21,43,0.12)] focus-within:border-[#6257E8] focus-within:ring-4 focus-within:ring-[#6257E8]/10 transition-colors"
+              >
+                <div className="relative flex flex-1 items-center min-w-0">
+                  <Search
+                    className="pointer-events-none absolute left-3.5 size-4 text-[#7A819E]"
+                    aria-hidden="true"
+                  />
+                  <input
+                    data-testid="hero-search-input"
+                    type="text"
+                    value={heroSearch}
+                    onChange={(e) => setHeroSearch(e.target.value)}
+                    placeholder="Search websites, apps, SaaS products..."
+                    aria-label="Search websites, apps, SaaS products"
+                    className="w-full h-11 pl-10 pr-3 text-sm text-brand-dark placeholder:text-[#8890AD] bg-transparent focus:outline-none"
+                  />
+                </div>
+                <Button
+                  data-testid="hero-search-submit"
+                  type="submit"
+                  size="lg"
+                  className="bg-brand-primary hover:bg-primary-700 text-white font-semibold shrink-0 gap-1.5"
                 >
-                  <item.icon className="h-3 w-3 text-slate-400" />
-                  <span>{item.label}</span>
-                </button>
-              ))}
+                  <span>Explore Marketplace</span>
+                  <ArrowRight className="size-4" aria-hidden="true" />
+                </Button>
+              </form>
+
+              {/* Subtle Genuine Benefit Indicators */}
+              <ul className="flex flex-wrap items-center gap-x-5 gap-y-2 pt-1 text-xs font-medium text-[#525A78]">
+                <li className="flex items-center gap-1.5">
+                  <span className="flex size-4 items-center justify-center rounded-full bg-[#ECEAFE] text-[#6257E8]">
+                    <Check className="size-2.5" aria-hidden="true" />
+                  </span>
+                  <span>Live demo previews</span>
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <span className="flex size-4 items-center justify-center rounded-full bg-[#ECEAFE] text-[#6257E8]">
+                    <Check className="size-2.5" aria-hidden="true" />
+                  </span>
+                  <span>Direct seller contact</span>
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <span className="flex size-4 items-center justify-center rounded-full bg-[#ECEAFE] text-[#6257E8]">
+                    <Check className="size-2.5" aria-hidden="true" />
+                  </span>
+                  <span>Customizable codebases</span>
+                </li>
+              </ul>
             </div>
 
-            {/* Trust Badges Strip */}
-            <div className="pt-8 grid grid-cols-2 md:grid-cols-4 gap-4 text-xs text-slate-600 font-medium border-t border-slate-200/80 max-w-4xl mx-auto">
-              <div className="flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-white/60 border border-slate-100">
-                <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
-                <span>Verified Source Code</span>
-              </div>
-              <div className="flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-white/60 border border-slate-100">
-                <Coins className="h-4 w-4 text-primary-600 shrink-0" />
-                <span>100% INR Transparency</span>
-              </div>
-              <div className="flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-white/60 border border-slate-100">
-                <Lock className="h-4 w-4 text-amber-600 shrink-0" />
-                <span>Escrow Safe Protocol</span>
-              </div>
-              <div className="flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-white/60 border border-slate-100">
-                <Zap className="h-4 w-4 text-sky-600 shrink-0" />
-                <span>Instant Code Handover</span>
-              </div>
+            {/* RIGHT COLUMN (~52% on desktop) — Large Browser Product Preview */}
+            <div className="w-full min-w-0">
+              <HeroBrowserPreview realListing={heroRealListing} />
             </div>
           </div>
         </div>
       </section>
 
-      {/* 2. STATS & REPUTATION STRIP */}
-      <section className="py-8 bg-slate-900 text-white border-y border-slate-800">
-        <div className="container mx-auto px-4 sm:px-6">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 text-center">
-            <div className="p-3">
-              <div className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">₹4.8 Cr+</div>
-              <div className="text-xs text-slate-400 mt-1 font-medium">Digital Asset Volume</div>
-            </div>
-            <div className="p-3">
-              <div className="text-2xl sm:text-3xl font-extrabold text-teal-400 tracking-tight">1,200+</div>
-              <div className="text-xs text-slate-400 mt-1 font-medium">Verified Codebases & Apps</div>
-            </div>
-            <div className="p-3">
-              <div className="text-2xl sm:text-3xl font-extrabold text-indigo-400 tracking-tight">100%</div>
-              <div className="text-xs text-slate-400 mt-1 font-medium">Escrow Code Delivery</div>
-            </div>
-            <div className="p-3">
-              <div className="text-2xl sm:text-3xl font-extrabold text-amber-400 tracking-tight">4.9 / 5</div>
-              <div className="text-xs text-slate-400 mt-1 font-medium">Founder Trust Score</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 3. FOUR CORE VERTICALS SECTION */}
-      <section className="py-16 sm:py-20 bg-white">
-        <div className="container mx-auto px-4 sm:px-6">
-          <div className="text-center max-w-2xl mx-auto mb-12 space-y-3">
-            <span className="text-xs font-bold uppercase tracking-wider text-primary-600">
-              Four Marketplace Verticals
-            </span>
-            <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-              Everything You Need to Own the Web
-            </h2>
-            <p className="text-sm text-slate-600">
-              Whether you need a fully-functional site, clean code snippets, an acquisition target, or custom development.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <CategoryCard
-              title="Ready-Made Websites"
-              description="Complete turnkey web applications with backend and database. Deploy and start taking customers in hours."
-              iconName="globe"
-              href="/ready-websites"
-              countLabel="8 Live Assets"
-              accentColor="indigo"
-            />
-            <CategoryCard
-              title="Templates & Code"
-              description="Production-grade SaaS boilerplates, UI libraries, themes and full-stack scripts ready for developers."
-              iconName="code"
-              href="/templates"
-              countLabel="8 Starter Kits"
-              accentColor="emerald"
-            />
-            <CategoryCard
-              title="Online Businesses"
-              description="Cash-flowing SaaS, content hubs, and e-commerce stores available for direct founder acquisition."
-              iconName="briefcase"
-              href="/businesses"
-              countLabel="4 Deals Active"
-              accentColor="amber"
-            />
-            <CategoryCard
-              title="Custom Services"
-              description="Hire verified creators for rebranding, cloud deployments, payment gateways, and feature extensions."
-              iconName="wrench"
-              href="/services"
-              countLabel="4 Packages"
-              accentColor="sky"
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* 4. FEATURED LISTINGS GRID (LIVE + CURATED) */}
-      <section className="py-16 sm:py-20 bg-slate-50/70 border-t border-slate-200">
-        <div className="container mx-auto px-4 sm:px-6">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-10 gap-4">
-            <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-primary-600 block mb-1">
-                Hand-Picked & Verified
+      {/* ========================================================= */}
+      {/* SECTION 1: EXPLORE WEBSITE & APP CATEGORIES               */}
+      {/* ========================================================= */}
+      <section className="bg-white py-16 sm:py-20">
+        <div className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8 flex flex-col gap-10">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+            <div className="flex flex-col gap-2 max-w-2xl">
+              <span className="text-xs font-semibold uppercase tracking-wider text-brand-primary">
+                Browse by Category
               </span>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-                Featured Marketplace Listings
+              <h2 className="text-2xl sm:text-3xl font-bold tracking-[-0.025em] text-brand-dark">
+                Explore Website &amp; App Categories
               </h2>
-              <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                Explore popular ready-to-deploy platforms, verified database listings and vetted codebases.
+              <p className="text-sm text-[#58607D]">
+                Find ready-made websites and web applications organized by business use case.
               </p>
             </div>
-            <Button asChild variant="outline" className="gap-2 self-start sm:self-auto hover:border-primary-400">
-              <Link href="/marketplace">
-                <span>View Full Catalog</span>
-                <ArrowRight className="h-4 w-4" />
+            <Button asChild variant="outline" className="w-fit border-brand-border text-brand-dark hover:bg-brand-canvas">
+              <Link href="/marketplace" className="gap-1.5">
+                <span>View Full Marketplace</span>
+                <ArrowRight className="size-4" aria-hidden="true" />
               </Link>
             </Button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {featuredListings.map((listing) => (
-              <ListingCard key={listing.id} listing={listing} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {PRIMARY_CATEGORIES.map((category) => {
+              const Icon = category.icon;
+              return (
+                <Link
+                  key={category.title}
+                  href={category.href}
+                  className="group block min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary rounded-xl"
+                >
+                  <Card className="h-full p-6 border-brand-border bg-white hover:border-[#C5C0FA] transition-colors flex flex-col justify-between gap-5">
+                    <div className="flex flex-col gap-4">
+                      <div
+                        className={`flex size-11 items-center justify-center rounded-xl ${category.iconBg}`}
+                      >
+                        <Icon className="size-5" aria-hidden="true" />
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <h3 className="text-base font-semibold tracking-tight text-brand-dark group-hover:text-brand-primary transition-colors">
+                          {category.title}
+                        </h3>
+                        <p className="text-sm text-[#58607D] leading-relaxed">
+                          {category.description}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-brand-primary">
+                      <span>Explore category</span>
+                      <ArrowRight
+                        className="size-3.5 transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-x-0.5 motion-reduce:transition-none"
+                        aria-hidden="true"
+                      />
+                    </span>
+                  </Card>
+                </Link>
+              );
+            })}
+          </div>
+
+          {/* Secondary Category Quick Links */}
+          <div className="flex flex-wrap items-center gap-2.5 pt-1">
+            <span className="text-xs font-medium text-[#707896]">More categories:</span>
+            {SECONDARY_CATEGORIES.map((chip) => (
+              <Link
+                key={chip.label}
+                href={chip.href}
+                className="rounded-full border border-brand-border bg-brand-canvas px-3.5 py-1.5 text-xs font-medium text-[#3C435E] hover:border-[#C5C0FA] hover:text-brand-primary transition-colors"
+              >
+                {chip.label}
+              </Link>
             ))}
           </div>
         </div>
       </section>
 
-      {/* 5. HOW IT WORKS (BUYER JOURNEY) */}
-      <section className="py-16 sm:py-24 bg-white border-t border-slate-200">
-        <div className="container mx-auto px-4 sm:px-6">
-          <div className="text-center max-w-2xl mx-auto mb-16 space-y-3">
-            <span className="text-xs font-bold uppercase tracking-wider text-teal-600">
-              Simple & Reliable
+      {/* ========================================================= */}
+      {/* SECTION 2: FEATURED WEBSITES & APPS (REAL SUPABASE DATA)  */}
+      {/* ========================================================= */}
+      <section className="bg-brand-canvas border-y border-brand-border py-16 sm:py-20">
+        <div className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8 flex flex-col gap-10">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+            <div className="flex flex-col gap-2 max-w-2xl">
+              <span className="text-xs font-semibold uppercase tracking-wider text-brand-primary">
+                Marketplace Catalog
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-bold tracking-[-0.025em] text-brand-dark">
+                Featured Websites &amp; Apps
+              </h2>
+              <p className="text-sm text-[#58607D]">
+                Approved listings submitted by independent developers on WebBazaar.
+              </p>
+            </div>
+            <Button asChild variant="outline" className="w-fit bg-white border-brand-border text-brand-dark hover:bg-primary-50">
+              <Link href="/marketplace" className="gap-1.5">
+                <span>Browse All Listings</span>
+                <ArrowRight className="size-4" aria-hidden="true" />
+              </Link>
+            </Button>
+          </div>
+
+          {/* Loading State */}
+          {listingsState === "loading" && (
+            <div
+              role="status"
+              aria-label="Loading featured websites and apps"
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+            >
+              {[1, 2, 3].map((item) => (
+                <Card key={item} className="overflow-hidden border-brand-border bg-white p-0">
+                  <Skeleton className="aspect-[16/10] w-full rounded-none" />
+                  <div className="p-5 flex flex-col gap-3">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-5 w-4/5" />
+                    <Skeleton className="h-4 w-full" />
+                    <div className="pt-3 border-t border-brand-border flex items-center justify-between">
+                      <Skeleton className="h-5 w-20" />
+                      <Skeleton className="h-8 w-24" />
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          {/* Error State */}
+          {listingsState === "error" && (
+            <Card
+              role="alert"
+              className="border-brand-border bg-white p-8 flex flex-col items-center text-center gap-4"
+            >
+              <p className="text-sm font-medium text-brand-dark">
+                {listingsError || "Unable to load featured listings right now."}
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={loadApprovedListings}
+                className="gap-2"
+              >
+                <RefreshCw className="size-4" aria-hidden="true" />
+                <span>Retry</span>
+              </Button>
+            </Card>
+          )}
+
+          {/* Empty State */}
+          {listingsState === "ready" && approvedListings.length === 0 && (
+            <Card className="border-brand-border bg-white p-10 flex flex-col items-center text-center gap-4">
+              <div className="flex size-12 items-center justify-center rounded-xl bg-[#F2F0FF] text-brand-primary">
+                <Globe className="size-6" aria-hidden="true" />
+              </div>
+              <div className="flex flex-col gap-1 max-w-md">
+                <h3 className="text-base font-semibold text-brand-dark">
+                  New listings are being reviewed
+                </h3>
+                <p className="text-sm text-[#58607D]">
+                  Explore the full catalog or submit your own ready-made website or app as a founding seller.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
+                <Button asChild className="bg-brand-primary hover:bg-primary-700 text-white">
+                  <Link href="/become-a-seller">Start Selling</Link>
+                </Button>
+                <Button asChild variant="outline">
+                  <Link href="/marketplace">Explore Marketplace</Link>
+                </Button>
+              </div>
+            </Card>
+          )}
+
+          {/* Real Approved Listings Grid */}
+          {listingsState === "ready" && approvedListings.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {approvedListings.map((listing) => (
+                <Card
+                  key={listing.id}
+                  className="group overflow-hidden border-brand-border bg-white hover:border-[#C5C0FA] transition-colors flex flex-col justify-between"
+                >
+                  <div className="flex flex-col">
+                    {/* Listing Visual Header */}
+                    <Link
+                      href={`/listings/${listing.slug}`}
+                      className="relative block aspect-[16/10] w-full overflow-hidden bg-[#F2F3FC] border-b border-brand-border"
+                    >
+                      {listing.featured_image_path ? (
+                        <Image
+                          src={listing.featured_image_path}
+                          alt={listing.title}
+                          fill
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                          className="object-cover transition-transform duration-500 group-hover:scale-105 motion-reduce:transition-none"
+                        />
+                      ) : (
+                        /* Clean Honest Fallback Browser Preview when seller has not uploaded an image */
+                        <div className="flex h-full w-full flex-col justify-between p-4 bg-gradient-to-br from-[#F7F8FF] via-white to-[#EFEBFD]">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-1" aria-hidden="true">
+                              <span className="size-2 rounded-full bg-[#FF605C]/70" />
+                              <span className="size-2 rounded-full bg-[#FFBD44]/70" />
+                              <span className="size-2 rounded-full bg-[#00CA4E]/70" />
+                            </div>
+                            <span className="rounded-full bg-white/95 border border-brand-border px-2.5 py-0.5 text-xs font-medium text-[#5146D6]">
+                              {getReadableType(listing.listing_type)}
+                            </span>
+                          </div>
+                          <div className="rounded-xl border border-brand-border bg-white/95 p-3.5 shadow-sm flex flex-col gap-2">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-xs font-semibold text-brand-primary">
+                                {listing.category_id}
+                              </span>
+                              {listing.demo_url && (
+                                <span className="rounded-md bg-[#F4F3FF] px-2 py-0.5 text-[10px] font-semibold text-[#5146D6]">
+                                  Live Demo Available
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex flex-col gap-1.5" aria-hidden="true">
+                              <div className="h-2.5 w-3/4 rounded-full bg-[#E8E9F8]" />
+                              <div className="h-2 w-1/2 rounded-full bg-[#F1F2FA]" />
+                            </div>
+                            {listing.demo_url && (
+                              <span className="text-xs text-[#6B7290] truncate pt-0.5">
+                                {listing.demo_url.replace(/^https?:\/\//, "")}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </Link>
+
+                    {/* Listing Details */}
+                    <div className="p-5 flex flex-col gap-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="rounded-full bg-[#F2F0FF] px-2.5 py-0.5 text-xs font-medium text-[#5146D6]">
+                          {listing.category_id}
+                        </span>
+                        <span className="text-xs font-medium text-[#646B88]">
+                          {getReadableType(listing.listing_type)}
+                        </span>
+                      </div>
+
+                      <Link href={`/listings/${listing.slug}`} className="flex flex-col gap-1.5">
+                        <h3 className="text-base font-semibold tracking-tight text-brand-dark group-hover:text-brand-primary transition-colors line-clamp-2">
+                          {listing.title}
+                        </h3>
+                        <p className="text-sm text-[#58607D] line-clamp-2 leading-relaxed">
+                          {listing.short_description}
+                        </p>
+                      </Link>
+                    </div>
+                  </div>
+
+                  {/* Card Footer */}
+                  <div className="px-5 pb-5 pt-4 border-t border-[#F0F1FA] flex items-center justify-between gap-3">
+                    <div className="flex flex-col">
+                      <span className="text-xs text-[#707896]">Listing price</span>
+                      <span className="text-base font-bold text-brand-dark tabular-nums">
+                        {formatINR(Number(listing.price_inr))}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {listing.demo_url && (
+                        <a
+                          href={listing.demo_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label={`Open live demo for ${listing.title}`}
+                          className="inline-flex h-9 items-center justify-center rounded-lg border border-brand-border bg-white px-2.5 text-xs font-medium text-[#4B526E] hover:text-brand-primary hover:border-[#C5C0FA] transition-colors"
+                        >
+                          <ExternalLink className="size-3.5" aria-hidden="true" />
+                        </a>
+                      )}
+                      <Button asChild size="sm" variant="outline" className="border-brand-border hover:border-[#C5C0FA] hover:text-brand-primary">
+                        <Link href={`/listings/${listing.slug}`} className="gap-1">
+                          <span>View Details</span>
+                          <ArrowUpRight className="size-3.5" aria-hidden="true" />
+                        </Link>
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+
+              {/* Honest Seller Invitation Card when catalog has fewer than 3 approved listings */}
+              {approvedListings.length < 3 && (
+                <Card
+                  className={`border-dashed border-2 border-[#D6D3F6] bg-white/90 p-6 sm:p-8 flex flex-col justify-between gap-6 ${
+                    approvedListings.length === 1 ? "lg:col-span-2" : ""
+                  }`}
+                >
+                  <div className="flex flex-col gap-4 max-w-xl">
+                    <div className="flex size-11 items-center justify-center rounded-xl bg-[#F2F0FF] text-brand-primary">
+                      <Plus className="size-5" aria-hidden="true" />
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-brand-primary">
+                        Open for Independent Developers
+                      </span>
+                      <h3 className="text-lg sm:text-xl font-bold tracking-tight text-brand-dark">
+                        Publish your ready-made website or app on WebBazaar
+                      </h3>
+                      <p className="text-sm text-[#58607D] leading-relaxed">
+                        Have a finished web app, SaaS starter, or niche business website? Submit your live demo and project specs for review so buyers can discover your work and reach out directly.
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                      <div className="rounded-xl bg-brand-canvas border border-brand-border p-3 flex flex-col gap-0.5">
+                        <span className="text-xs font-semibold text-brand-dark">Share Live Demo</span>
+                        <span className="text-xs text-[#646B88]">Let buyers test UX first</span>
+                      </div>
+                      <div className="rounded-xl bg-brand-canvas border border-brand-border p-3 flex flex-col gap-0.5">
+                        <span className="text-xs font-semibold text-brand-dark">Direct Inquiries</span>
+                        <span className="text-xs text-[#646B88]">Discuss scope directly</span>
+                      </div>
+                      <div className="rounded-xl bg-brand-canvas border border-brand-border p-3 flex flex-col gap-0.5">
+                        <span className="text-xs font-semibold text-brand-dark">Set INR Pricing</span>
+                        <span className="text-xs text-[#646B88]">Transparent listing rates</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3 pt-2">
+                    <Button asChild className="bg-brand-primary hover:bg-primary-700 text-white font-semibold">
+                      <Link href="/become-a-seller" className="gap-1.5">
+                        <span>Start Selling</span>
+                        <ArrowRight className="size-4" aria-hidden="true" />
+                      </Link>
+                    </Button>
+                    <Button asChild variant="outline" className="border-brand-border">
+                      <Link href="/marketplace">Explore Full Catalog</Link>
+                    </Button>
+                  </div>
+                </Card>
+              )}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* ========================================================= */}
+      {/* SECTION 3: HOW WEBBAZAAR WORKS                            */}
+      {/* Discover -> Connect -> Customize -> Deliver               */}
+      {/* ========================================================= */}
+      <section id="how-it-works" className="bg-white py-16 sm:py-24 scroll-mt-20">
+        <div className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8 flex flex-col gap-12">
+          <div className="flex flex-col gap-2 max-w-2xl">
+            <span className="text-xs font-semibold uppercase tracking-wider text-brand-primary">
+              Simple Direct Workflow
             </span>
-            <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-[-0.025em] text-brand-dark">
               How WebBazaar Works
             </h2>
-            <p className="text-sm text-slate-600">
-              From discovery to code handover in four transparent steps.
+            <p className="text-sm text-[#58607D]">
+              Discover ready-made projects, talk directly with their creators, customize to fit your brand, and coordinate delivery together.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {/* Step 1 */}
-            <div className="group relative flex flex-col items-center text-center p-6 rounded-2xl bg-slate-50/80 border border-slate-100 hover:border-indigo-200 hover:bg-white hover:shadow-lg hover:shadow-indigo-500/5 transition-all duration-200">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-100 text-primary-600 font-bold text-lg mb-4 group-hover:scale-105 transition-transform">
-                1
-              </div>
-              <h3 className="font-bold text-base text-slate-900 mb-2">Discover</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Filter by vertical, business model, tech stack (Next.js, Supabase), and price range in INR.
-              </p>
-            </div>
-
-            {/* Step 2 */}
-            <div className="group relative flex flex-col items-center text-center p-6 rounded-2xl bg-slate-50/80 border border-slate-100 hover:border-teal-200 hover:bg-white hover:shadow-lg hover:shadow-teal-500/5 transition-all duration-200">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-teal-100 text-teal-700 font-bold text-lg mb-4 group-hover:scale-105 transition-transform">
-                2
-              </div>
-              <h3 className="font-bold text-base text-slate-900 mb-2">Preview</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Interact with live demo environments, test admin dashboards, and inspect transparent tech specs.
-              </p>
-            </div>
-
-            {/* Step 3 */}
-            <div className="group relative flex flex-col items-center text-center p-6 rounded-2xl bg-slate-50/80 border border-slate-100 hover:border-amber-200 hover:bg-white hover:shadow-lg hover:shadow-amber-500/5 transition-all duration-200">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-100 text-amber-800 font-bold text-lg mb-4 group-hover:scale-105 transition-transform">
-                3
-              </div>
-              <h3 className="font-bold text-base text-slate-900 mb-2">Connect or Buy</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Instant digital delivery for templates, or request due diligence and NDA for online businesses.
-              </p>
-            </div>
-
-            {/* Step 4 */}
-            <div className="group relative flex flex-col items-center text-center p-6 rounded-2xl bg-slate-50/80 border border-slate-100 hover:border-sky-200 hover:bg-white hover:shadow-lg hover:shadow-sky-500/5 transition-all duration-200">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-sky-100 text-sky-700 font-bold text-lg mb-4 group-hover:scale-105 transition-transform">
-                4
-              </div>
-              <h3 className="font-bold text-base text-slate-900 mb-2">Customize & Launch</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Rebrand yourself or hire the original creator through our integrated service add-ons.
-              </p>
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {WORKFLOW_STEPS.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Card
+                  key={item.step}
+                  className="p-6 border-brand-border bg-brand-canvas/60 flex flex-col gap-4"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex size-10 items-center justify-center rounded-xl bg-white border border-brand-border text-brand-primary">
+                      <Icon className="size-5" aria-hidden="true" />
+                    </div>
+                    <span className="text-xs font-bold tracking-wider text-[#8C84EC] tabular-nums">
+                      STEP {item.step}
+                    </span>
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <h3 className="text-base font-semibold tracking-tight text-brand-dark">
+                      {item.title}
+                    </h3>
+                    <p className="text-sm text-[#58607D] leading-relaxed">
+                      {item.description}
+                    </p>
+                  </div>
+                </Card>
+              );
+            })}
           </div>
         </div>
       </section>
 
-      {/* 6. SELLER PROMOTION CTA BANNER */}
-      <section className="py-16 sm:py-20 bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-primary-600/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="container mx-auto px-4 sm:px-6 relative z-10">
-          <div className="max-w-4xl mx-auto flex flex-col lg:flex-row items-center justify-between gap-8">
-            <div className="space-y-4 text-center lg:text-left">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800/80 border border-slate-700 text-teal-400 text-xs font-semibold">
-                <Rocket className="h-3.5 w-3.5" />
-                <span>For Indian Developers, Studios & Founders</span>
-              </div>
-              <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
-                Turn Your Code Into Recurring Income.
-              </h2>
-              <p className="text-slate-300 text-sm max-w-xl leading-relaxed">
-                Have you built side projects, production boilerplate repos, or turnkey websites? Monetize your digital assets with verified Indian buyers. Keep up to 88% of your revenue with automated payouts.
-              </p>
-            </div>
+      {/* ========================================================= */}
+      {/* SECTION 4: WHY BUY THROUGH WEBBAZAAR?                     */}
+      {/* ========================================================= */}
+      <section className="bg-brand-canvas border-t border-brand-border py-16 sm:py-20">
+        <div className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8 flex flex-col gap-12">
+          <div className="flex flex-col gap-2 max-w-2xl">
+            <span className="text-xs font-semibold uppercase tracking-wider text-brand-primary">
+              Built for Practical Launches
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-[-0.025em] text-brand-dark">
+              Why Buy Through WebBazaar?
+            </h2>
+            <p className="text-sm text-[#58607D]">
+              A straightforward way for founders and businesses to find working websites and collaborate directly with independent developers.
+            </p>
+          </div>
 
-            <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
-              <Button asChild size="lg" className="bg-primary-600 hover:bg-primary-700 text-white font-semibold shadow-lg shadow-primary-600/25">
-                <Link href="/sell">
-                  <span>Start Selling on WebBazaar</span>
-                  <ArrowRight className="h-4 w-4 ml-2" />
-                </Link>
-              </Button>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {BUYER_BENEFITS.map((benefit) => {
+              const Icon = benefit.icon;
+              return (
+                <Card
+                  key={benefit.title}
+                  className="p-6 border-brand-border bg-white flex flex-col gap-4"
+                >
+                  <div className="flex size-10 items-center justify-center rounded-xl bg-[#F2F0FF] text-brand-primary">
+                    <Icon className="size-5" aria-hidden="true" />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <h3 className="text-base font-semibold tracking-tight text-brand-dark">
+                      {benefit.title}
+                    </h3>
+                    <p className="text-sm text-[#58607D] leading-relaxed">
+                      {benefit.description}
+                    </p>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* ========================================================= */}
+      {/* SECTION 5: START SELLING CTA                              */}
+      {/* ========================================================= */}
+      <section className="bg-white py-16 sm:py-20">
+        <div className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8">
+          <div className="relative overflow-hidden rounded-3xl bg-brand-dark px-6 py-12 sm:px-12 sm:py-16 text-white">
+            {/* Subtle purple accent glow inside CTA card */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute -top-24 -right-24 size-96 rounded-full bg-[radial-gradient(circle,rgba(98,87,232,0.45)_0%,rgba(155,93,229,0.2)_50%,transparent_75%)] blur-2xl"
+            />
+            <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+              <div className="flex flex-col gap-3 max-w-2xl">
+                <span className="w-fit rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold text-[#C8C2FF]">
+                  For Independent Developers &amp; Studios
+                </span>
+                <h2 className="text-2xl sm:text-4xl font-bold tracking-[-0.03em] text-white leading-tight">
+                  Have a website or app ready to share? Start selling on WebBazaar.
+                </h2>
+                <p className="text-sm sm:text-base text-[#B8BED9] leading-relaxed max-w-xl">
+                  Showcase live demos of your websites and apps to founders looking for a faster launch. Connect with buyers directly and offer optional customization.
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
+                <Button
+                  asChild
+                  size="lg"
+                  className="bg-brand-primary hover:bg-primary-700 text-white font-semibold"
+                >
+                  <Link href="/become-a-seller" className="gap-2">
+                    <span>Start Selling</span>
+                    <ArrowRight className="size-4" aria-hidden="true" />
+                  </Link>
+                </Button>
+                <Button
+                  asChild
+                  size="lg"
+                  variant="outline"
+                  className="border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white hover:border-white/30"
+                >
+                  <Link href="/sell">For Sellers</Link>
+                </Button>
+              </div>
             </div>
           </div>
         </div>

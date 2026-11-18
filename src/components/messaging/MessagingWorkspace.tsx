@@ -33,6 +33,11 @@ import {
 } from "@/lib/messaging/actions";
 import { MAX_MESSAGE_LENGTH } from "@/lib/messaging/schemas";
 import type { ConversationSummary, MessageItem } from "@/lib/messaging/types";
+import { getConversationCustomizationDataAction } from "@/lib/customization/actions";
+import type { CustomizationRequestRecord } from "@/lib/customization/types";
+import { CustomizationThreadPanel } from "@/components/customization/CustomizationThreadPanel";
+import { RequestCustomizationDialog } from "@/components/customization/RequestCustomizationDialog";
+import { CreateQuoteDialog } from "@/components/customization/CreateQuoteDialog";
 import { cn, formatINR } from "@/lib/utils";
 
 interface MessagingWorkspaceProps {
@@ -112,6 +117,22 @@ export function MessagingWorkspace({ activeConversationId }: MessagingWorkspaceP
   const [realtimeStatus, setRealtimeStatus] = React.useState<"connecting" | "connected" | "reconnecting">(
     "connecting"
   );
+
+  // Customization requests & quotations state for active thread
+  const [customizationRequests, setCustomizationRequests] = React.useState<
+    CustomizationRequestRecord[]
+  >([]);
+  const [requestDialogOpen, setRequestDialogOpen] = React.useState(false);
+  const [editingRequest, setEditingRequest] = React.useState<CustomizationRequestRecord | null>(null);
+  const [quoteDialogOpen, setQuoteDialogOpen] = React.useState(false);
+  const [quotingRequest, setQuotingRequest] = React.useState<CustomizationRequestRecord | null>(null);
+
+  const loadCustomizationData = React.useCallback(async (convId: string) => {
+    const res = await getConversationCustomizationDataAction(convId);
+    if (res.success) {
+      setCustomizationRequests(res.data.requests);
+    }
+  }, []);
 
   const tempCounterRef = React.useRef(0);
   const messagesEndRef = React.useRef<HTMLDivElement | null>(null);
@@ -194,12 +215,33 @@ export function MessagingWorkspace({ activeConversationId }: MessagingWorkspaceP
     if (!activeConversationId) {
       setActiveConversation(null);
       setMessages([]);
+      setCustomizationRequests([]);
       setThreadState("idle");
       setThreadError(null);
       return;
     }
     loadThread(activeConversationId);
-  }, [activeConversationId, loadThread]);
+    loadCustomizationData(activeConversationId);
+  }, [activeConversationId, loadThread, loadCustomizationData]);
+
+  // Auto-open Request Customization modal when navigated with ?action=request-customization
+  React.useEffect(() => {
+    if (
+      threadState === "ready" &&
+      activeConversation &&
+      currentUserId &&
+      activeConversation.buyer_id === currentUserId &&
+      typeof window !== "undefined"
+    ) {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("action") === "request-customization") {
+        setEditingRequest(null);
+        setRequestDialogOpen(true);
+        // Remove query param cleanly so reload doesn't re-open unexpectedly
+        window.history.replaceState(null, "", `/dashboard/messages/${activeConversation.id}`);
+      }
+    }
+  }, [threadState, activeConversation, currentUserId]);
 
   // Auto-scroll when messages arrive
   React.useEffect(() => {
@@ -390,6 +432,32 @@ export function MessagingWorkspace({ activeConversationId }: MessagingWorkspaceP
             );
           }
         )
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "customization_requests",
+          },
+          () => {
+            if (activeConversationId) {
+              loadCustomizationData(activeConversationId);
+            }
+          }
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "quotes",
+          },
+          () => {
+            if (activeConversationId) {
+              loadCustomizationData(activeConversationId);
+            }
+          }
+        )
         .subscribe(handleStatus);
 
       activeChannel = inboxChannel;
@@ -403,7 +471,7 @@ export function MessagingWorkspace({ activeConversationId }: MessagingWorkspaceP
         supabase.removeChannel(activeChannel);
       }
     };
-  }, [currentUserId, activeConversationId, loadConversations, loadThread]);
+  }, [currentUserId, activeConversationId, loadConversations, loadThread, loadCustomizationData]);
 
   // Optimistic message send with error rollback
   const handleSendMessage = async (e?: React.FormEvent) => {
@@ -951,6 +1019,28 @@ export function MessagingWorkspace({ activeConversationId }: MessagingWorkspaceP
                   )}
                 </div>
 
+                {/* Structured Customization Requests & Quotations Panel */}
+                {currentUserId && (
+                  <CustomizationThreadPanel
+                    requests={customizationRequests}
+                    isBuyer={activeConversation.buyer_id === currentUserId}
+                    isSeller={activeConversation.seller_id === currentUserId}
+                    onOpenNewRequest={() => {
+                      setEditingRequest(null);
+                      setRequestDialogOpen(true);
+                    }}
+                    onEditRequest={(req) => {
+                      setEditingRequest(req);
+                      setRequestDialogOpen(true);
+                    }}
+                    onOpenSendQuote={(req) => {
+                      setQuotingRequest(req);
+                      setQuoteDialogOpen(true);
+                    }}
+                    onRefresh={() => loadCustomizationData(activeConversation.id)}
+                  />
+                )}
+
                 {/* Scrollable Message Timeline (parent-owned scroll chain) */}
                 <div
                   data-testid="messages-timeline"
@@ -1080,6 +1170,29 @@ export function MessagingWorkspace({ activeConversationId }: MessagingWorkspaceP
           </section>
         </Card>
       </div>
+
+      {/* Buyer Request Customization Dialog */}
+      {activeConversation && (
+        <RequestCustomizationDialog
+          open={requestDialogOpen}
+          onOpenChange={setRequestDialogOpen}
+          conversationId={activeConversation.id}
+          listingTitle={activeConversation.listing?.title || "Marketplace Listing"}
+          editingRequest={editingRequest}
+          onSuccess={() => loadCustomizationData(activeConversation.id)}
+        />
+      )}
+
+      {/* Seller Create/Revise Quotation Dialog */}
+      {activeConversation && (
+        <CreateQuoteDialog
+          open={quoteDialogOpen}
+          onOpenChange={setQuoteDialogOpen}
+          request={quotingRequest}
+          defaultBasePriceINR={Number(activeConversation.listing?.price_inr || 0)}
+          onSuccess={() => loadCustomizationData(activeConversation.id)}
+        />
+      )}
     </div>
   );
 }

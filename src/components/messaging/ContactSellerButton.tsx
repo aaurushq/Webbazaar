@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { MessageSquare, Loader2, AlertCircle, Store } from "lucide-react";
+import { MessageSquare, Loader2, AlertCircle, Store, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { startConversationAction } from "@/lib/messaging/actions";
@@ -26,7 +26,7 @@ export function ContactSellerButton({
   const router = useRouter();
   const [authChecked, setAuthChecked] = React.useState(false);
   const [currentUserId, setCurrentUserId] = React.useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [isSubmitting, setIsSubmitting] = React.useState<"chat" | "customize" | null>(null);
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
 
   React.useEffect(() => {
@@ -103,7 +103,7 @@ export function ContactSellerButton({
     );
   }
 
-  const handleContactSeller = async () => {
+  const handleContactSeller = async (mode: "chat" | "customize") => {
     setErrorMsg(null);
 
     // Anonymous visitor -> redirect safely to login and return to this listing
@@ -112,7 +112,7 @@ export function ContactSellerButton({
       return;
     }
 
-    setIsSubmitting(true);
+    setIsSubmitting(mode);
     const result = await startConversationAction(listingId);
 
     if (!result.success) {
@@ -121,11 +121,12 @@ export function ContactSellerButton({
         return;
       }
       setErrorMsg(result.error);
-      setIsSubmitting(false);
+      setIsSubmitting(null);
       return;
     }
 
-    router.push(`/dashboard/messages/${result.data.conversationId}`);
+    const suffix = mode === "customize" ? "?action=request-customization" : "";
+    router.push(`/dashboard/messages/${result.data.conversationId}${suffix}`);
   };
 
   return (
@@ -133,12 +134,12 @@ export function ContactSellerButton({
       <Button
         type="button"
         size="lg"
-        disabled={isSubmitting || !authChecked}
-        onClick={handleContactSeller}
+        disabled={Boolean(isSubmitting) || !authChecked}
+        onClick={() => handleContactSeller("chat")}
         data-testid="contact-seller-button"
         className="w-full justify-center gap-2 bg-brand-primary hover:bg-primary-700 text-white font-semibold"
       >
-        {isSubmitting ? (
+        {isSubmitting === "chat" ? (
           <>
             <Loader2 className="size-4 animate-spin" aria-hidden="true" />
             <span>Opening Conversation...</span>
@@ -151,10 +152,32 @@ export function ContactSellerButton({
         )}
       </Button>
 
+      <Button
+        type="button"
+        size="lg"
+        variant="outline"
+        disabled={Boolean(isSubmitting) || !authChecked}
+        onClick={() => handleContactSeller("customize")}
+        data-testid="request-customization-listing-btn"
+        className="w-full justify-center gap-2 border-[#C5C0FA] text-brand-primary hover:bg-[#F4F3FF] font-semibold"
+      >
+        {isSubmitting === "customize" ? (
+          <>
+            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+            <span>Opening Request Form...</span>
+          </>
+        ) : (
+          <>
+            <SlidersHorizontal className="size-4" aria-hidden="true" />
+            <span>Request Customization</span>
+          </>
+        )}
+      </Button>
+
       <p className="text-xs text-[#646B88] text-center">
         {currentUserId
-          ? "Start a direct real-time chat to discuss demo details and customization."
-          : "Sign in to message the seller directly about this project."}
+          ? "Chat directly or submit a customization request to receive a structured quote."
+          : "Sign in to contact the seller or request customizations for this project."}
       </p>
 
       {errorMsg && (

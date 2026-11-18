@@ -14,6 +14,7 @@ import {
   ShieldCheck,
   Package,
   MessageSquare,
+  SlidersHorizontal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +22,9 @@ import { createClient } from "@/lib/supabase/client";
 import { getSellerDashboardStatsAction, getSellerListingsAction } from "@/lib/listings/actions";
 import { getMessagingDashboardStatsAction } from "@/lib/messaging/actions";
 import type { MessagingDashboardStats } from "@/lib/messaging/types";
+import { getCustomizationDashboardStatsAction } from "@/lib/customization/actions";
+import type { CustomizationDashboardStats } from "@/lib/customization/types";
+import { formatINR } from "@/lib/utils";
 
 export default function SellerDashboardPage() {
   const [loading, setLoading] = React.useState(true);
@@ -36,6 +40,16 @@ export default function SellerDashboardPage() {
     totalUnreadCount: 0,
     recentBuyerConversations: [],
     recentSellerInquiries: [],
+  });
+  const [custStats, setCustStats] = React.useState<CustomizationDashboardStats>({
+    myCustomizationRequestsCount: 0,
+    quotesReceivedCount: 0,
+    pendingDecisionsCount: 0,
+    recentBuyerRequests: [],
+    newCustomizationRequestsCount: 0,
+    quotesSentCount: 0,
+    acceptedQuotesCount: 0,
+    recentSellerRequests: [],
   });
 
   React.useEffect(() => {
@@ -57,14 +71,16 @@ export default function SellerDashboardPage() {
 
           if (profile) {
             setSellerProfile(profile);
-            const [statsRes, listingsRes, msgRes] = await Promise.all([
+            const [statsRes, listingsRes, msgRes, custRes] = await Promise.all([
               getSellerDashboardStatsAction(),
               getSellerListingsAction(),
               getMessagingDashboardStatsAction(),
+              getCustomizationDashboardStatsAction(),
             ]);
             if (statsRes.stats) setStats(statsRes.stats);
             if (listingsRes.listings) setRecentListings(listingsRes.listings.slice(0, 5));
             if (msgRes.success) setMessagingStats(msgRes.data);
+            if (custRes.success) setCustStats(custRes.data);
           } else {
             // Check seller application status
             const { data: app } = await (supabase as any)
@@ -189,6 +205,53 @@ export default function SellerDashboardPage() {
           </Link>
         </div>
 
+        {/* Real Database Customization & Quotation KPIs */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Link
+            href="/dashboard/messages"
+            className="rounded-xl border border-brand-border bg-white p-5 hover:border-[#C5C0FA] transition-colors flex flex-col gap-1"
+          >
+            <span className="text-xs font-medium text-[#58607D] uppercase">
+              New Customization Requests
+            </span>
+            <p
+              data-testid="seller-new-requests-count"
+              className="text-2xl font-extrabold text-brand-dark tabular-nums"
+            >
+              {custStats.newCustomizationRequestsCount}
+            </p>
+            <span className="text-xs text-[#646B88]">Open requests awaiting quotation</span>
+          </Link>
+
+          <Link
+            href="/dashboard/messages"
+            className="rounded-xl border border-brand-border bg-white p-5 hover:border-[#C5C0FA] transition-colors flex flex-col gap-1"
+          >
+            <span className="text-xs font-medium text-[#58607D] uppercase">Quotes Sent</span>
+            <p
+              data-testid="seller-quotes-sent-count"
+              className="text-2xl font-extrabold text-brand-primary tabular-nums"
+            >
+              {custStats.quotesSentCount}
+            </p>
+            <span className="text-xs text-[#646B88]">Structured offers delivered</span>
+          </Link>
+
+          <Link
+            href="/dashboard/messages"
+            className="rounded-xl border border-brand-border bg-white p-5 hover:border-[#C5C0FA] transition-colors flex flex-col gap-1"
+          >
+            <span className="text-xs font-medium text-[#58607D] uppercase">Accepted Quotes</span>
+            <p
+              data-testid="seller-accepted-quotes-count"
+              className="text-2xl font-extrabold text-brand-dark tabular-nums"
+            >
+              {custStats.acceptedQuotesCount}
+            </p>
+            <span className="text-xs text-brand-primary font-medium">Locked buyer agreements</span>
+          </Link>
+        </div>
+
         {/* Real Database Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
           <div className="rounded-xl border border-slate-200 bg-white p-5">
@@ -216,6 +279,60 @@ export default function SellerDashboardPage() {
             <p className="text-2xl font-extrabold text-red-900 mt-1">{stats.rejected}</p>
             <span className="text-[11px] text-red-600">Requires seller revisions</span>
           </div>
+        </div>
+
+        {/* Recent Customization Requests List */}
+        <div className="rounded-2xl border border-brand-border bg-white p-6 flex flex-col gap-4">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <SlidersHorizontal className="size-4 text-brand-primary" aria-hidden="true" />
+              <h3 className="font-bold text-brand-dark text-sm">Customization Requests &amp; Quotes</h3>
+            </div>
+            <Link
+              href="/dashboard/messages"
+              className="text-xs font-semibold text-brand-primary hover:underline flex items-center gap-1"
+            >
+              <span>Manage in Inbox</span>
+              <ArrowRight className="size-3.5" aria-hidden="true" />
+            </Link>
+          </div>
+
+          {custStats.recentSellerRequests.length === 0 ? (
+            <div className="text-center py-5 text-xs text-[#646B88]">
+              No customization requests yet. Buyers can submit requests from your approved listings or inside chat.
+            </div>
+          ) : (
+            <div className="divide-y divide-[#F0F1FA]">
+              {custStats.recentSellerRequests.map((req) => {
+                const latestQuote = req.quotes[0];
+                return (
+                  <Link
+                    key={req.id}
+                    href={`/dashboard/messages/${req.conversation_id}`}
+                    className="py-3 flex items-center justify-between gap-4 hover:bg-brand-canvas/60 px-2 rounded-lg transition-colors"
+                  >
+                    <div className="min-w-0 flex flex-col gap-0.5">
+                      <p className="text-sm font-semibold text-brand-dark truncate">
+                        {req.title}
+                      </p>
+                      <p className="text-xs text-[#58607D] truncate">
+                        Buyer: {req.buyer?.display_name || "Buyer"} • {req.listing?.title || "Listing"}
+                        {latestQuote
+                          ? ` • Quote v${latestQuote.version}: ${formatINR(latestQuote.total_price)} (${latestQuote.status})`
+                          : ""}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Badge variant={req.status === "closed" ? "success" : "outline"}>
+                        {req.status}
+                      </Badge>
+                      <span className="text-xs font-semibold text-brand-primary">Open →</span>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Buyer Inquiries Live List */}
